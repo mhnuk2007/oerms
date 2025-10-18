@@ -1,0 +1,130 @@
+# =========================================================
+# 🔧 Global ignores for OERMS (Backend + Frontend)
+# =========================================================
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Logs
+logs/
+*.log
+*.log.*
+**/logs/
+**/log/
+**/out/
+**/build/
+**/dist/
+
+# =========================================================
+# 🐘 Backend (Spring Boot, Maven, Docker)
+# =========================================================
+
+# Maven build
+**/target/
+**/dependency-reduced-pom.xml
+**/surefire-reports/
+**/maven-status/
+
+# Spring Boot config
+**/application-local.yml
+**/application-dev.yml
+**/application-test.yml
+**/.env
+**/.env.*
+
+# Docker
+**/docker-compose.override.yml
+**/Dockerfile.local
+**/.docker/
+**/tmp/
+**/data/
+
+# Generated artifacts
+*.jar
+*.war
+*.ear
+
+# Misc
+!src/main/resources/
+!src/test/resources/
+
+# =========================================================
+# ⚙️ Frontend (Next.js 15, TypeScript)
+# =========================================================
+
+# Node
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js build output
+**/.next/
+**/out/
+**/.vercel/
+.next/
+out/
+
+# TypeScript
+*.tsbuildinfo
+
+# Env files
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*
+
+# Lint and cache
+.eslintcache
+.stylelintcache
+.next-cache/
+
+# Editor files
+*.swp
+*.swo
+
+# =========================================================
+# 🐳 Docker / Compose
+# =========================================================
+**/docker-compose.override.yml
+**/docker-compose.dev.yml
+**/.dockerignore
+**/.docker/
+**/tmp/
+**/volumes/
+
+# =========================================================
+# 🧪 Tests / Coverage
+# =========================================================
+**/coverage/
+**/test-output/
+**/jacoco/
+**/reports/
+
+# =========================================================
+# 📦 Build artifacts / Backups
+# =========================================================
+*.bak
+*.tmp
+*.old
+*.orig
+
+# =========================================================
+# ✅ Allow important configs
+# =========================================================
+!**/application.yml
+!**/docker-compose.yml
+!**/pom.xml
+!**/README.md
+!**/next.config.ts
+!**/tsconfig.json
+!**/package.json
+!**/package-lock.json

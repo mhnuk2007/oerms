@@ -1,0 +1,623 @@
+OERMS Backend API Endpoints - Spring Boot Implementation
+
+This document provides comprehensive REST API specifications for the OERMS microservices architecture built with Spring Boot. All endpoints are designed to work seamlessly with the Next.js frontend.
+
+Common Configuration
+- Base URL: Configured via NEXT_PUBLIC_API_BASE (e.g. https://api.oerms.com or http://localhost:8080)
+- Authentication: JWT Bearer token in Authorization header: Authorization: Bearer <token>
+- Content-Type: application/json unless otherwise specified
+- CORS: Configured to allow frontend origin with credentials
+- Real-time: WebSocket/SSE for live updates, Kafka for inter-service communication
+- Error Format: { "error": "Error Code", "message": "Human readable message", "timestamp": "ISO8601", "path": "/api/endpoint" }
+
+1) API Gateway Service (Spring Cloud Gateway)
+- Port: 8080
+- Purpose: Single entry point for API routing, authentication, rate limiting, and service discovery
+- Configuration: Spring Cloud Gateway with Eureka discovery
+- Security: JWT validation, CORS configuration, rate limiting
+- Load Balancing: Round-robin with circuit breaker pattern
+
+2) User Service (Spring Boot + Spring Security)
+- Port: 8084
+- Database: PostgreSQL (oerms_user schema)
+- Dependencies: Spring Security, Spring Data JPA, Spring Cloud OpenFeign
+
+Authentication Endpoints:
+- POST /api/auth/login
+  - Body: { "email": "string", "password": "string" }
+  - Response: { "token": "string", "user": { "id": "string", "email": "string", "roles": ["ADMIN","TEACHER","STUDENT"], "name": "string" } }
+  - Status: 200 OK, 401 Unauthorized
+  - Notes: JWT token with 24h expiry, includes user info
+
+- POST /api/auth/refresh
+  - Body: { "refreshToken": "string" }
+  - Response: { "token": "string", "expiresIn": 86400 }
+  - Status: 200 OK, 401 Unauthorized
+  - Notes: Token rotation with new refresh token
+
+- POST /api/auth/logout
+  - Headers: Authorization: Bearer <token>
+  - Response: { "message": "Logged out successfully" }
+  - Status: 200 OK
+  - Notes: Blacklist token server-side
+
+- GET /api/users/me
+  - Headers: Authorization: Bearer <token>
+  - Response: { "id": "string", "email": "string", "roles": ["ADMIN","TEACHER","STUDENT"], "name": "string", "createdAt": "ISO8601" }
+  - Status: 200 OK, 401 Unauthorized
+
+User Management Endpoints:
+- GET /api/users
+  - Headers: Authorization: Bearer <token>
+  - Query: ?page=0&size=20&role=TEACHER&search=john
+  - Response: { "content": [User], "totalElements": 100, "totalPages": 5, "size": 20, "number": 0 }
+  - Status: 200 OK, 403 Forbidden
+  - Notes: Paginated list with filtering
+
+- GET /api/users/{id}
+  - Headers: Authorization: Bearer <token>
+  - Response: User object
+  - Status: 200 OK, 404 Not Found, 403 Forbidden
+
+- POST /api/users
+  - Headers: Authorization: Bearer <token> (Admin only)
+  - Body: { "email": "string", "password": "string", "name": "string", "roles": ["TEACHER"] }
+  - Response: Created user object
+  - Status: 201 Created, 400 Bad Request, 403 Forbidden
+
+- PUT /api/users/{id}
+  - Headers: Authorization: Bearer <token>
+  - Body: { "name": "string", "email": "string" }
+  - Response: Updated user object
+  - Status: 200 OK, 404 Not Found, 403 Forbidden
+
+- DELETE /api/users/{id}
+  - Headers: Authorization: Bearer <token> (Admin only)
+  - Response: { "message": "User deleted successfully" }
+  - Status: 200 OK, 404 Not Found, 403 Forbidden
+
+3) Exam Service (Spring Boot + Spring Data JPA)
+- Port: 8081
+- Database: PostgreSQL (oerms_exam schema)
+- Dependencies: Spring Data JPA, Spring Cloud OpenFeign, Spring Cache
+
+Exam Management Endpoints:
+- POST /api/exams
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Body: {
+      "title": "string",
+      "description": "string",
+      "startTime": "2024-01-15T09:00:00Z",
+      "endTime": "2024-01-15T17:00:00Z",
+      "durationSeconds": 3600,
+      "allowedAttempts": 1,
+      "visibility": "PUBLIC",
+      "settings": {
+        "shuffleQuestions": true,
+        "showAnswersAfterSubmit": false,
+        "allowReview": true,
+        "timeLimit": 3600
+      }
+    }
+  - Response: { "id": "string", "title": "string", "status": "DRAFT", "createdAt": "ISO8601", "createdBy": "string" }
+  - Status: 201 Created, 400 Bad Request, 403 Forbidden
+
+- GET /api/exams
+  - Headers: Authorization: Bearer <token>
+  - Query: ?page=0&size=20&status=PUBLISHED&teacherId=uuid&search=math&sort=createdAt,desc
+  - Response: { "content": [Exam], "totalElements": 50, "totalPages": 3, "size": 20, "number": 0 }
+  - Status: 200 OK
+  - Notes: Paginated list with filtering and sorting
+
+- GET /api/exams/{examId}
+  - Headers: Authorization: Bearer <token>
+  - Response: Full exam object with metadata
+  - Status: 200 OK, 404 Not Found, 403 Forbidden
+  - Notes: Role-based access to sensitive data
+
+- PUT /api/exams/{examId}
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Body: Partial exam update object
+  - Response: Updated exam object
+  - Status: 200 OK, 404 Not Found, 403 Forbidden, 400 Bad Request
+
+- DELETE /api/exams/{examId}
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Response: { "message": "Exam deleted successfully" }
+  - Status: 200 OK, 404 Not Found, 403 Forbidden, 409 Conflict
+  - Notes: Cannot delete if exam has attempts
+
+- POST /api/exams/{examId}/publish
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Response: { "message": "Exam published successfully", "status": "PUBLISHED" }
+  - Status: 200 OK, 404 Not Found, 403 Forbidden, 400 Bad Request
+  - Notes: Validates exam has questions before publishing
+
+- GET /api/exams/{examId}/session
+  - Headers: Authorization: Bearer <token> (STUDENT)
+  - Response: { "exam": Exam, "questions": [Question] }
+  - Status: 200 OK, 404 Not Found, 403 Forbidden
+  - Notes: Returns exam with questions for student view (no correct answers)
+
+- GET /api/exams/{examId}/analytics
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Response: ResultAnalytics object
+  - Status: 200 OK, 404 Not Found, 403 Forbidden
+  - Notes: Comprehensive exam performance analytics
+
+4) Question Service (Spring Boot + Spring Data JPA)
+- Port: 8082
+- Database: PostgreSQL (oerms_question schema)
+- Dependencies: Spring Data JPA, Spring Web, Apache POI (for Excel processing)
+
+Question Management Endpoints:
+- POST /api/exams/{examId}/questions
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Body (MCQ): {
+      "type": "MCQ",
+      "questionText": "What is the capital of France?",
+      "options": [
+        {"id": "a", "text": "London"},
+        {"id": "b", "text": "Paris"},
+        {"id": "c", "text": "Berlin"},
+        {"id": "d", "text": "Madrid"}
+      ],
+      "correctOptionIds": ["b"],
+      "marks": 2,
+      "negativeMarks": 0.5,
+      "difficultyLevel": "EASY",
+      "instructions": "Choose the correct answer"
+    }
+  - Body (Subjective): {
+      "type": "SUBJECTIVE",
+      "questionText": "Explain the process of photosynthesis",
+      "marks": 10,
+      "instructions": "Provide a detailed explanation with examples",
+      "difficultyLevel": "MEDIUM"
+    }
+  - Response: { "id": "string", "questionText": "string", "type": "MCQ", "marks": 2, "createdAt": "ISO8601" }
+  - Status: 201 Created, 400 Bad Request, 403 Forbidden, 404 Not Found
+
+- POST /api/exams/{examId}/questions/bulk
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Content-Type: multipart/form-data
+  - Body: FormData with file field and optional format parameter
+  - Response: { "message": "Questions uploaded successfully", "importedCount": 25, "failedCount": 2, "errors": [...] }
+  - Status: 200 OK, 400 Bad Request, 403 Forbidden
+  - Notes: Supports CSV, Excel, and JSON formats
+
+- GET /api/exams/{examId}/questions
+  - Headers: Authorization: Bearer <token>
+  - Query: ?page=0&size=50&type=MCQ&difficulty=EASY
+  - Response: { "content": [Question], "totalElements": 30, "totalPages": 1 }
+  - Status: 200 OK, 403 Forbidden, 404 Not Found
+  - Notes: Role-based filtering of sensitive data
+
+- GET /api/questions/{questionId}
+  - Headers: Authorization: Bearer <token>
+  - Response: Full question object
+  - Status: 200 OK, 404 Not Found, 403 Forbidden
+
+- PUT /api/questions/{questionId}
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Body: Partial question update object
+  - Response: Updated question object
+  - Status: 200 OK, 404 Not Found, 403 Forbidden, 400 Bad Request
+
+- DELETE /api/questions/{questionId}
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Response: { "message": "Question deleted successfully" }
+  - Status: 200 OK, 404 Not Found, 403 Forbidden, 409 Conflict
+  - Notes: Cannot delete if question is part of active exam
+
+- GET /api/questions/templates
+  - Headers: Authorization: Bearer <token>
+  - Response: { "templates": [{"name": "MCQ Template", "fields": [...]}] }
+  - Status: 200 OK
+  - Notes: Returns available question templates for bulk upload
+
+5) Attempt Service (Spring Boot + Spring Data JPA)
+- Port: 8086
+- Database: PostgreSQL (oerms_attempt schema)
+- Dependencies: Spring Data JPA, Spring Cache, Spring Cloud OpenFeign
+
+Attempt Management Endpoints:
+- POST /api/exams/{examId}/attempts
+  - Headers: Authorization: Bearer <token> (STUDENT)
+  - Body: { "studentId": "string" } (optional, inferred from token)
+  - Response: {
+      "attemptId": "string",
+      "examId": "string",
+      "studentId": "string",
+      "startedAt": "2024-01-15T10:00:00Z",
+      "expiresAt": "2024-01-15T11:00:00Z",
+      "durationSeconds": 3600,
+      "status": "IN_PROGRESS",
+      "currentQuestionIndex": 0
+    }
+  - Status: 201 Created, 400 Bad Request, 403 Forbidden, 409 Conflict
+  - Notes: Validates exam availability and student eligibility
+
+- GET /api/attempts/{attemptId}
+  - Headers: Authorization: Bearer <token>
+  - Response: Full attempt object with answers
+  - Status: 200 OK, 404 Not Found, 403 Forbidden
+  - Notes: Returns attempt details and saved answers
+
+- PATCH /api/attempts/{attemptId}/answers
+  - Headers: Authorization: Bearer <token> (STUDENT)
+  - Body: {
+      "answers": [
+        {
+          "questionId": "string",
+          "answer": "string or array",
+          "answeredAt": "2024-01-15T10:30:00Z",
+          "timeSpentSeconds": 120
+        }
+      ],
+      "currentQuestionIndex": 5
+    }
+  - Response: { "message": "Answers saved successfully", "savedAt": "ISO8601" }
+  - Status: 200 OK, 400 Bad Request, 403 Forbidden, 404 Not Found
+  - Notes: Autosave functionality, idempotent operation
+
+- POST /api/attempts/{attemptId}/submit
+  - Headers: Authorization: Bearer <token> (STUDENT)
+  - Body: { "answers": [...] } (optional, uses saved answers if not provided)
+  - Response: {
+      "message": "Exam submitted successfully",
+      "resultId": "string",
+      "submittedAt": "2024-01-15T10:45:00Z",
+      "status": "SUBMITTED"
+    }
+  - Status: 200 OK, 400 Bad Request, 403 Forbidden, 404 Not Found
+  - Notes: Final submission, triggers grading process
+
+- GET /api/students/{studentId}/attempts
+  - Headers: Authorization: Bearer <token>
+  - Query: ?page=0&size=20&examId=uuid&status=COMPLETED
+  - Response: { "content": [Attempt], "totalElements": 15, "totalPages": 1 }
+  - Status: 200 OK, 403 Forbidden
+  - Notes: Paginated list of student attempts
+
+- GET /api/exams/{examId}/attempts
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Query: ?page=0&size=50&status=IN_PROGRESS&studentId=uuid
+  - Response: { "content": [Attempt], "totalElements": 25, "totalPages": 1 }
+  - Status: 200 OK, 403 Forbidden, 404 Not Found
+  - Notes: All attempts for a specific exam
+
+6) Result Service (Spring Boot + Spring Data JPA)
+- Port: 8083
+- Database: PostgreSQL (oerms_result schema)
+- Dependencies: Spring Data JPA, Spring Cache, Spring Cloud OpenFeign, Kafka
+
+Result Management Endpoints:
+- POST /api/results/{attemptId}/grade
+  - Headers: Authorization: Bearer <token> (STUDENT or SYSTEM)
+  - Response: {
+      "resultId": "string",
+      "status": "GRADED",
+      "score": 85.5,
+      "totalMarks": 100,
+      "percentage": 85.5,
+      "gradedAt": "2024-01-15T11:00:00Z"
+    }
+  - Status: 200 OK, 400 Bad Request, 404 Not Found
+  - Notes: Auto-grades MCQ, queues subjective for manual review
+
+- GET /api/results/{resultId}
+  - Headers: Authorization: Bearer <token>
+  - Response: {
+      "id": "string",
+      "examId": "string",
+      "studentId": "string",
+      "attemptId": "string",
+      "score": 85.5,
+      "totalMarks": 100,
+      "percentage": 85.5,
+      "status": "PASS",
+      "startedAt": "ISO8601",
+      "submittedAt": "ISO8601",
+      "gradedAt": "ISO8601",
+      "timeSpentSeconds": 3300,
+      "questionResults": [
+        {
+          "questionId": "string",
+          "question": Question,
+          "answer": Answer,
+          "marksAwarded": 2,
+          "maxMarks": 2,
+          "isCorrect": true,
+          "feedback": "Correct answer"
+        }
+      ]
+    }
+  - Status: 200 OK, 404 Not Found, 403 Forbidden
+
+- GET /api/students/{studentId}/results
+  - Headers: Authorization: Bearer <token>
+  - Query: ?page=0&size=20&examId=uuid&status=PASS&sort=gradedAt,desc
+  - Response: { "content": [Result], "totalElements": 10, "totalPages": 1 }
+  - Status: 200 OK, 403 Forbidden
+  - Notes: Paginated list of student results
+
+- GET /api/exams/{examId}/results
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Query: ?page=0&size=50&status=PASS&studentId=uuid&sort=score,desc
+  - Response: { "content": [Result], "totalElements": 25, "totalPages": 1 }
+  - Status: 200 OK, 403 Forbidden, 404 Not Found
+  - Notes: All results for a specific exam
+
+- GET /api/exams/{examId}/analytics
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Response: {
+      "totalAttempts": 50,
+      "averageScore": 78.5,
+      "highestScore": 95,
+      "lowestScore": 45,
+      "passPercentage": 82.0,
+      "averageTimeSpent": 3200,
+      "questionAnalytics": [
+        {
+          "questionId": "string",
+          "averageScore": 1.8,
+          "correctPercentage": 90,
+          "averageTimeSpent": 120,
+          "difficultyLevel": "EASY"
+        }
+      ],
+      "timeDistribution": [
+        {"range": "0-30 min", "count": 5},
+        {"range": "30-60 min", "count": 35},
+        {"range": "60+ min", "count": 10}
+      ],
+      "scoreDistribution": [
+        {"range": "0-20%", "count": 2},
+        {"range": "20-40%", "count": 5},
+        {"range": "40-60%", "count": 8},
+        {"range": "60-80%", "count": 20},
+        {"range": "80-100%", "count": 15}
+      ]
+    }
+  - Status: 200 OK, 403 Forbidden, 404 Not Found
+  - Notes: Comprehensive analytics for exam performance
+
+- POST /api/results/{resultId}/regrade
+  - Headers: Authorization: Bearer <token> (ADMIN or TEACHER)
+  - Body: { "reason": "Manual review requested" }
+  - Response: { "message": "Regrading initiated", "status": "PENDING" }
+  - Status: 200 OK, 400 Bad Request, 404 Not Found, 403 Forbidden
+  - Notes: Triggers manual regrading of results
+
+7) Notification Service (Spring Boot + Spring Integration)
+- Port: 8085
+- Dependencies: Spring Mail, Spring Integration, Kafka, WhatsApp Business API
+- External Services: SMTP, WhatsApp Business API
+
+Notification Endpoints:
+- POST /api/notifications/email
+  - Headers: Authorization: Bearer <token>
+  - Body: {
+      "to": ["student@example.com"],
+      "subject": "Exam Result Available",
+      "templateId": "exam_result",
+      "context": {
+        "studentName": "John Doe",
+        "examTitle": "Mathematics Final",
+        "score": 85,
+        "percentage": 85.0
+      }
+    }
+  - Response: { "notificationId": "string", "status": "SENT", "sentAt": "ISO8601" }
+  - Status: 200 OK, 400 Bad Request, 500 Internal Server Error
+
+- POST /api/notifications/whatsapp
+  - Headers: Authorization: Bearer <token>
+  - Body: {
+      "to": ["+1234567890"],
+      "templateId": "exam_result_whatsapp",
+      "context": {
+        "studentName": "John Doe",
+        "examTitle": "Mathematics Final",
+        "score": 85
+      }
+    }
+  - Response: { "notificationId": "string", "status": "SENT", "sentAt": "ISO8601" }
+  - Status: 200 OK, 400 Bad Request, 500 Internal Server Error
+
+- POST /api/notifications/push
+  - Headers: Authorization: Bearer <token>
+  - Body: {
+      "toDeviceId": "string",
+      "title": "Exam Result",
+      "message": "Your exam result is now available",
+      "data": {"resultId": "string", "examId": "string"}
+    }
+  - Response: { "notificationId": "string", "status": "SENT" }
+  - Status: 200 OK, 400 Bad Request, 500 Internal Server Error
+
+- GET /api/notifications/templates
+  - Headers: Authorization: Bearer <token>
+  - Response: {
+      "templates": [
+        {
+          "id": "exam_result",
+          "name": "Exam Result Email",
+          "type": "EMAIL",
+          "subject": "Exam Result - {{examTitle}}",
+          "body": "Dear {{studentName}}, your exam result is {{score}}/{{totalMarks}}"
+        }
+      ]
+    }
+  - Status: 200 OK
+
+- GET /api/notifications/history
+  - Headers: Authorization: Bearer <token>
+  - Query: ?page=0&size=20&type=EMAIL&status=SENT
+  - Response: { "content": [Notification], "totalElements": 100 }
+  - Status: 200 OK
+
+8) Service Registry (Eureka)
+- Port: 8761
+- Purpose: Service discovery and health monitoring
+- Configuration: Spring Cloud Netflix Eureka Server
+- Not directly called by frontend
+
+9) Real-time Communication
+WebSocket Endpoints (via Gateway):
+- WS /ws/connect?token=<jwt_token>
+  - Purpose: Real-time communication with frontend
+  - Subscriptions:
+    - /topic/exam.results.{examId} - Exam result updates
+    - /user/{userId}/notifications - Personal notifications
+    - /topic/exam.status.{examId} - Exam status changes
+  - Message Format: {
+      "type": "RESULT_UPDATED",
+      "payload": {
+        "resultId": "string",
+        "examId": "string",
+        "studentId": "string",
+        "score": 85.5,
+        "status": "GRADED"
+      },
+      "timestamp": "ISO8601"
+    }
+
+Kafka Topics (Internal):
+- exam.attempts.started
+- exam.attempts.submitted
+- exam.results.graded
+- notifications.email.sent
+- notifications.whatsapp.sent
+
+10) Health & Monitoring
+- GET /actuator/health
+  - Response: { "status": "UP", "components": {...} }
+  - Status: 200 OK, 503 Service Unavailable
+
+- GET /actuator/metrics
+  - Response: Application metrics
+  - Status: 200 OK
+
+- GET /actuator/info
+  - Response: Application information
+  - Status: 200 OK
+
+11) Spring Boot Implementation Guidelines
+
+Database Schema Design:
+- Use separate schemas for each service (oerms_user, oerms_exam, oerms_question, oerms_result, oerms_attempt)
+- Implement proper foreign key relationships
+- Use UUIDs for primary keys
+- Add audit fields (createdAt, updatedAt, createdBy, updatedBy)
+- Implement soft deletes where appropriate
+
+Security Configuration:
+- JWT with RS256 algorithm for token signing
+- Token expiry: 24 hours for access, 7 days for refresh
+- Password hashing: BCrypt with strength 12
+- CORS: Allow frontend origin with credentials
+- Rate limiting: 10 requests/second for API, 5 requests/minute for login
+- Input validation: Use Bean Validation annotations
+
+Error Handling:
+- Global exception handler with consistent error format
+- Custom exceptions for business logic errors
+- Proper HTTP status codes
+- Logging with correlation IDs
+
+Caching Strategy:
+- Redis for session management and frequently accessed data
+- Cache exam questions and user profiles
+- TTL: 1 hour for exam data, 24 hours for user data
+
+12) Example API Flows
+
+Login Flow:
+1) POST /api/auth/login -> { "token": "jwt", "user": {...} }
+2) Store token in localStorage/sessionStorage
+3) GET /api/users/me -> populate user context
+
+Exam Taking Flow:
+1) GET /api/exams -> display available exams
+2) POST /api/exams/{examId}/attempts -> start attempt
+3) GET /api/exams/{examId}/session -> load questions
+4) PATCH /api/attempts/{attemptId}/answers -> autosave (every 30s)
+5) POST /api/attempts/{attemptId}/submit -> final submission
+6) WebSocket: Listen for /topic/exam.results.{examId}
+7) GET /api/results/{resultId} -> display results
+
+Admin Analytics Flow:
+1) GET /api/exams -> list all exams
+2) GET /api/exams/{examId}/analytics -> comprehensive analytics
+3) GET /api/exams/{examId}/results -> detailed results
+4) POST /api/notifications/email -> send notifications
+
+13) Development Setup
+
+Required Dependencies:
+- Spring Boot 3.2+
+- Spring Cloud 2023.0+
+- Spring Security 6+
+- Spring Data JPA
+- Spring Cloud Gateway
+- Spring Cloud Netflix Eureka
+- PostgreSQL Driver
+- Redis
+- Kafka
+- Spring Mail
+- Spring WebSocket
+
+Environment Variables:
+- DATABASE_URL=jdbc:postgresql://localhost:5432/oerms
+- REDIS_URL=redis://localhost:6379
+- KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+- JWT_SECRET=your-secret-key
+- SMTP_HOST=smtp.gmail.com
+- SMTP_PORT=587
+- WHATSAPP_API_URL=https://graph.facebook.com/v18.0
+- WHATSAPP_API_TOKEN=your-token
+
+14) Testing Strategy
+
+Unit Tests:
+- Service layer with Mockito
+- Repository layer with @DataJpaTest
+- Controller layer with @WebMvcTest
+- Security tests with @WithMockUser
+
+Integration Tests:
+- @SpringBootTest for full context
+- TestContainers for database testing
+- Mock external services
+
+Performance Tests:
+- JMeter for load testing
+- Monitor response times and throughput
+- Database query optimization
+
+15) Deployment Considerations
+
+Production Configuration:
+- Use environment-specific profiles
+- Externalize configuration
+- Enable actuator endpoints for monitoring
+- Configure proper logging levels
+- Set up health checks
+
+Monitoring:
+- Spring Boot Actuator
+- Micrometer with Prometheus
+- Application logs with ELK stack
+- Database monitoring
+- JVM metrics
+
+Scaling:
+- Horizontal scaling with load balancer
+- Database connection pooling
+- Redis clustering
+- Kafka partitioning
+- CDN for static assets
+
+End of API Endpoints Document

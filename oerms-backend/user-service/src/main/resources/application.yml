@@ -16,7 +16,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
@@ -83,7 +83,7 @@ management:
 
 # JWT Configuration
 jwt:
-  secret: ${JWT_SECRET:oerms-secret-key-change-in-production-must-be-at-least-256-bits}
+  secret: ${JWT_SECRET:a99c27f6b1eeeecf22eb7df5532bf8f0b5b5ca565933d519d0f1d52f789e47544bf3bf6fd6c3a19c2a6a2dd16f9576101fa4cbfa73e579eee635ab736d69f6f2}
   expiration: 86400000  # 24 hours
   refresh-expiration: 604800000  # 7 days
 
@@ -124,9 +124,21 @@ spring:
       on-profile: docker
   datasource:
     url: jdbc:postgresql://postgres:5432/oerms
+
+  # Redis Configuration (add this)
   data:
     redis:
-      host: redis
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      jedis:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
 
 eureka:
   client:

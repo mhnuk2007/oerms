@@ -9,77 +9,14 @@ spring:
           enabled: true
           lower-case-service-id: true
 
-      routes:
-        # User Service Routes
-        - id: user-service-auth
-          uri: lb://user-service
-          predicates:
-            - Path=/api/auth/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: userServiceCircuitBreaker
-                fallbackUri: forward:/fallback/user-service
-
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/users/**
-          filters:
-            - JwtAuthenticationFilter
-            - name: CircuitBreaker
-              args:
-                name: userServiceCircuitBreaker
-
-        # Exam Service Routes
-        - id: exam-service
-          uri: lb://exam-service
-          predicates:
-            - Path=/api/exams/**
-          filters:
-            - JwtAuthenticationFilter
-            - name: CircuitBreaker
-              args:
-                name: examServiceCircuitBreaker
-
-        # Question Service Routes
-        - id: question-service
-          uri: lb://question-service
-          predicates:
-            - Path=/api/questions/**
-          filters:
-            - JwtAuthenticationFilter
-
-        # Attempt Service Routes
-        - id: attempt-service
-          uri: lb://attempt-service
-          predicates:
-            - Path=/api/attempts/**
-          filters:
-            - JwtAuthenticationFilter
-
-        # Result Service Routes
-        - id: result-service
-          uri: lb://result-service
-          predicates:
-            - Path=/api/results/**
-          filters:
-            - JwtAuthenticationFilter
-
-        # Notification Service Routes
-        - id: notification-service
-          uri: lb://notification-service
-          predicates:
-            - Path=/api/notifications/**
-          filters:
-            - JwtAuthenticationFilter
-
+      # Global CORS configuration
       globalcors:
-        cors-configurations:
+        corsConfigurations:
           '[/**]':
             allowedOrigins:
               - "http://localhost:3000"
               - "http://localhost:3001"
+              - "https://oerms.com"
             allowedMethods:
               - GET
               - POST
@@ -87,16 +24,15 @@ spring:
               - DELETE
               - PATCH
               - OPTIONS
-            allowedHeaders: "*"
+            allowedHeaders:
+              - "*"
             allowCredentials: true
+            exposedHeaders:
+              - Authorization
+              - X-User-Id
+              - X-User-Email
+              - X-User-Roles
             maxAge: 3600
-
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password: ${REDIS_PASSWORD:}
-      timeout: 2000ms
 
 server:
   port: 8080
@@ -104,67 +40,112 @@ server:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_URI:http://admin:admin123@localhost:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
   instance:
     prefer-ip-address: true
-    lease-renewal-interval-in-seconds: 10
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+# User Service Configuration
+user-service:
+  validate-token-path: /api/v1/auth/validate
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:a99c27f6b1eeeecf22eb7df5532bf8f0b5b5ca565933d519d0f1d52f789e47544bf3bf6fd6c3a19c2a6a2dd16f9576101fa4cbfa73e579eee635ab736d69f6f2}
+  expiration: 86400000  # 24 hours
+  refresh-expiration: 604800000  # 7 days
+
+# Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      userServiceCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+      examServiceCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+      questionServiceCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+      attemptServiceCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+      resultServiceCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+      notificationServiceCircuitBreaker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+
+  timelimiter:
+    instances:
+      userServiceCircuitBreaker:
+        timeoutDuration: 5s
+      examServiceCircuitBreaker:
+        timeoutDuration: 5s
+      questionServiceCircuitBreaker:
+        timeoutDuration: 5s
+      attemptServiceCircuitBreaker:
+        timeoutDuration: 5s
+      resultServiceCircuitBreaker:
+        timeoutDuration: 5s
+      notificationServiceCircuitBreaker:
+        timeoutDuration: 5s
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,gateway
+        include: gateway,health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
+    gateway:
+      enabled: true
   metrics:
     export:
       prometheus:
         enabled: true
 
-# JWT Configuration
-jwt:
-  secret: ${JWT_SECRET:oerms-secret-key-change-in-production-must-be-at-least-256-bits}
-  expiration: 86400000  # 24 hours in milliseconds
-
-# Rate Limiting
-rate-limit:
-  requests-per-second: 10
-  burst-capacity: 20
-
 logging:
   level:
-    root: INFO
     org.springframework.cloud.gateway: DEBUG
-    com.oerms: DEBUG
-
-resilience4j:
-  circuitbreaker:
-    instances:
-      userServiceCircuitBreaker:
-        sliding-window-size: 10
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 10000
-        permitted-number-of-calls-in-half-open-state: 3
-      examServiceCircuitBreaker:
-        sliding-window-size: 10
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 10000
-
----
-# Docker Profile
-spring:
-  config:
-    activate:
-      on-profile: docker
-  data:
-    redis:
-      host: redis
-      port: 6379
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+    reactor.netty: INFO
+    com.oerms.apigateway: DEBUG
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

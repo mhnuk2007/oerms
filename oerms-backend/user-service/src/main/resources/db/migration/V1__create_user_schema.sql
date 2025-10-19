@@ -1,7 +1,5 @@
-/*
 -- Create schema
 CREATE SCHEMA IF NOT EXISTS oerms_user;
-
 -- Users table
 CREATE TABLE oerms_user.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -109,4 +107,3 @@ COMMENT ON TABLE oerms_user.user_roles IS 'User roles mapping table';
 COMMENT ON TABLE oerms_user.refresh_tokens IS 'JWT refresh tokens for authentication';
 COMMENT ON COLUMN oerms_user.users.password_hash IS 'BCrypt hashed password with strength 12';
 COMMENT ON COLUMN oerms_user.users.is_deleted IS 'Soft delete flag to maintain data integrity';
-*/

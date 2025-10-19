@@ -27,6 +27,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final UserDetailsServiceImpl userDetailsService;
     private final UserRepository userRepository;
 
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -42,10 +43,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         jwt = authHeader.substring(7);
         userEmail = jwtService.getEmailFromToken(jwt);
-        User user = userRepository.findByEmail(userEmail).orElseThrow(()-> new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(userEmail).orElseThrow(()->new RuntimeException("User not found"));
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(user.getName());
             if (!jwtService.isTokenExpired(jwt)) {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(

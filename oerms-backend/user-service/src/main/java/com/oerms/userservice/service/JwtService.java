@@ -3,7 +3,6 @@ package com.oerms.userservice.service;
 import com.oerms.userservice.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +15,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * JWT Service for generating and validating tokens
+ *
+ * @author OERMS Team
+ */
 @Service
 @Slf4j
 public class JwtService {
@@ -36,7 +40,7 @@ public class JwtService {
         claims.put("roles", user.getRoles());
         claims.put("name", user.getName());
 
-        return createToken(claims, user.getId().toString(), expiration);
+        return createToken(claims, user.getEmail(), user.getId().toString(), expiration);
     }
 
     public String generateRefreshToken(User user) {
@@ -44,16 +48,17 @@ public class JwtService {
         claims.put("userId", user.getId().toString());
         claims.put("type", "refresh");
 
-        return createToken(claims, user.getId().toString(), refreshExpiration);
+        return createToken(claims, user.getEmail(), user.getId().toString(), refreshExpiration);
     }
 
-    private String createToken(Map<String, Object> claims, String subject, Long validity) {
+    private String createToken(Map<String, Object> claims, String subject, String jwtId, Long validity) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + validity);
 
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)
+                .id(jwtId)  // Set JWT ID (jti) to user ID
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey(), Jwts.SIG.HS512)
@@ -65,7 +70,7 @@ public class JwtService {
             Jwts.parser()
                     .verifyWith(getSigningKey())
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
             return true;
         } catch (Exception e) {
             log.error("JWT validation error: {}", e.getMessage());
@@ -89,6 +94,23 @@ public class JwtService {
             return expiration.before(new Date());
         } catch (Exception e) {
             return true;
+        }
+    }
+
+    /**
+     * Get remaining validity of token in seconds
+     * Used for blacklist expiration
+     */
+    public long getRemainingValidity(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            Date expiration = claims.getExpiration();
+            Date now = new Date();
+            long remainingMillis = expiration.getTime() - now.getTime();
+            return Math.max(0, remainingMillis / 1000); // Convert to seconds
+        } catch (Exception e) {
+            log.error("Error calculating remaining validity: {}", e.getMessage());
+            return 0;
         }
     }
 

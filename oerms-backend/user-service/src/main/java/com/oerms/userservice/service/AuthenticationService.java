@@ -36,38 +36,39 @@ public class AuthenticationService {
     
     @Value("${jwt.refresh-expiration:604800000}")
     private Long refreshExpiration;
-    
+
     public AuthResponse login(LoginRequest request) {
         log.info("Login attempt for email: {}", request.getEmail());
-        
+
         User user = userRepository.findByEmail(request.getEmail())
             .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
-        
+
         if (!user.getIsActive()) {
             throw new UnauthorizedException("Account is inactive");
         }
-        
+
         if (user.getIsDeleted()) {
             throw new UnauthorizedException("Invalid email or password");
         }
-        
+        System.out.println(request.getPassword());
+        System.out.println(user.getPasswordHash());
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new UnauthorizedException("Invalid email or password");
         }
-        
+
         // Update last login
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
-        
+
         // Generate tokens
         String accessToken = jwtService.generateToken(user);
         String refreshTokenStr = jwtService.generateRefreshToken(user);
-        
+
         // Save refresh token
         saveRefreshToken(user, refreshTokenStr);
-        
+
         log.info("User logged in successfully: {}", user.getEmail());
-        
+
         return AuthResponse.builder()
             .token(accessToken)
             .refreshToken(refreshTokenStr)

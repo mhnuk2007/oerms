@@ -1,13 +1,13 @@
-package com.oerms.userservice;
+package com.oerms.authserver;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class UserServiceApplication {
+public class AuthServerApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(UserServiceApplication.class, args);
+        SpringApplication.run(AuthServerApplication.class, args);
     }
 
 }

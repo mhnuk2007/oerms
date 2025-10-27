@@ -1,27 +1,17 @@
-package com.oerms.userservice.service;
+package com.oerms.userservice.Service;
 
-import com.oerms.userservice.dto.*;
-import com.oerms.userservice.entity.Role;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.oerms.userservice.Entity.User;
+import com.oerms.userservice.Repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import java.util.UUID;
+import java.util.List;
 
-public interface UserService {
-
-    UserDTO createUser(CreateUserRequest request);
-
-    UserDTO getUserById(UUID id);
-
-    Page<UserDTO> getAllUsers(Pageable pageable);
-
-    Page<UserDTO> searchUsers(String search, Role role, Pageable pageable);
-
-    UserDTO updateUser(UUID id, UpdateUserRequest request);
-
-    void deleteUser(UUID id);
-
-    void changePassword(UUID userId, ChangePasswordRequest request);
-
-    long countUsersByRole(Role role);
+@Service
+public class UserService {
+    @Autowired
+    private UserRepository userRepository;
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
 }

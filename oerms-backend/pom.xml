@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
@@ -16,27 +15,19 @@
     <artifactId>oerms-parent</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
-    <name>OERMS Parent</name>
 
     <modules>
-        <module>auth-server</module>
-        <module>common-lib</module>
+        <module>common</module>
         <module>service-registry</module>
+        <module>auth-server</module>
         <module>api-gateway</module>
         <module>user-service</module>
-        <module>exam-service</module>
-        <module>question-service</module>
-        <module>attempt-service</module>
-        <module>result-service</module>
-        <module>notification-service</module>
     </modules>
 
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2023.0.0</spring-cloud.version>
-        <jwt.version>0.12.3</jwt.version>
-        <lombok.version>1.18.30</lombok.version>
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <spring-security-oauth2.version>1.2.0</spring-security-oauth2.version>
     </properties>
 
     <dependencyManagement>
@@ -49,31 +40,18 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt-api</artifactId>
-                <version>${jwt.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt-impl</artifactId>
-                <version>${jwt.version}</version>
-                <scope>runtime</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt-jackson</artifactId>
-                <version>${jwt.version}</version>
-                <scope>runtime</scope>
+                <groupId>com.oerms</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 </project>

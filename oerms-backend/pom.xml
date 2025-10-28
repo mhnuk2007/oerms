@@ -22,6 +22,7 @@
         <module>auth-server</module>
         <module>api-gateway</module>
         <module>user-service</module>
+        <module>exam-service</module>
     </modules>
 
     <properties>

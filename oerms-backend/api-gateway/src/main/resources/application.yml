@@ -8,16 +8,42 @@ spring:
   cloud:
     gateway:
       routes:
+        - id: user-service-admin
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/admin/**
+          filters:
+            - RoleCheck=ADMIN
+
+        - id: user-service-teacher
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/teacher/**
+          filters:
+            - RoleCheck=TEACHER
+
         - id: user-service
           uri: lb://user-service
           predicates:
             - Path=/api/users/**
+
+        - id: auth-server
+          uri: lb://auth-server
+          predicates:
+            - Path=/api/auth/**
+          metadata:
+            cors:
+              allowedOrigins: "http://localhost:3000"
+              allowedMethods:
+                - GET
+                - POST
+              allowedHeaders: "*"
+
   security:
     oauth2:
       resourceserver:
         jwt:
           jwk-set-uri: http://localhost:9000/oauth2/jwks
-
 
 eureka:
   client:
@@ -26,9 +52,20 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
 
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    urls:
+      - name: auth-server
+        url: http://localhost:9000/v3/api-docs
+      - name: user-service
+        url: http://localhost:8082/v3/api-docs
+
 logging:
   level:
-    root: INFO                # Default log level
+    root: INFO
     org.springframework.web: DEBUG
     org.springframework.security: DEBUG
     org.springframework.security.oauth2: TRACE

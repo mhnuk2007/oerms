@@ -3,11 +3,15 @@ package com.oerms.user;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
-@SpringBootApplication(scanBasePackages = {"com.oerms.user", "com.oerms.common"})
+@SpringBootApplication
+@EnableFeignClients(basePackages = "com.oerms.user.client")
 @EnableDiscoveryClient
 public class UserServiceApplication {
+
     public static void main(String[] args) {
         SpringApplication.run(UserServiceApplication.class, args);
     }
+
 }

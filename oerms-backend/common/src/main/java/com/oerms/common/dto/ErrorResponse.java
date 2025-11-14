@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Data
 @Builder
@@ -13,6 +14,8 @@ import java.time.LocalDateTime;
 public class ErrorResponse {
     private String error;
     private String message;
-    private LocalDateTime timestamp;
+    private int status;
     private String path;
+    private LocalDateTime timestamp;
+    private Map<String, String> validationErrors;
 }

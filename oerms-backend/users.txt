@@ -1,0 +1,3 @@
+1	"admin"	"admin@oerms.com"	"$2a$10$tW2a7bGbIanh4JQdN0l3uO3mnqjemt45YsxXk5l09Q9ZxtkDe4CTK"	"System"	"Admin"	true	true	true	true	"2025-11-13 21:59:44.192753"	"2025-11-13 21:59:44.192753"
+2	"teacher"	"teacher@oerms.com"	"$2a$10$4WYJMD68epVfgb6DYNWbQ.qKtq3HA.lSKa2XUq6uaqQvu5i5uTpyq"	"Default"	"Teacher"	true	true	true	true	"2025-11-13 21:59:44.192753"	"2025-11-13 21:59:44.192753"
+3	"student"	"student@oerms.com"	"$2a$10$ePoWzmFSEzOBC1QCDx4hmO9./w0151dxU1/9xzENGC6piyGK3IouG"	"Default"	"Student"	true	true	true	true	"2025-11-13 21:59:44.192753"	"2025-11-13 21:59:44.192753"

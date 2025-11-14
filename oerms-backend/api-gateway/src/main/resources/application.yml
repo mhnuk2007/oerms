@@ -7,65 +7,86 @@ spring:
 
   cloud:
     gateway:
-      routes:
-        - id: user-service-admin
-          uri: lb://user-service
-          predicates:
-            - Path=/api/users/admin/**
-          filters:
-            - RoleCheck=ADMIN
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
 
-        - id: user-service-teacher
-          uri: lb://user-service
-          predicates:
-            - Path=/api/users/teacher/**
-          filters:
-            - RoleCheck=TEACHER
+          routes:
+            # Auth Server Routes (Write Operations)
+            - id: auth-register
+              uri: lb://auth-server
+              predicates:
+                - Path=/auth/register
+              filters:
+                - RewritePath=/auth/register, /auth/register
 
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/users/**
+            - id: auth-oauth
+              uri: lb://auth-server
+              predicates:
+                - Path=/oauth2/**
 
-        - id: auth-server
-          uri: lb://auth-server
-          predicates:
-            - Path=/api/auth/**
-          metadata:
-            cors:
-              allowedOrigins: "http://localhost:3000"
-              allowedMethods:
-                - GET
-                - POST
-              allowedHeaders: "*"
+            # User read operations -> user-service (cached replica)
+            - id: user-read-operations
+              uri: lb://user-service
+              predicates:
+                - Path=/api/users/profile/**
+                - Method=GET
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: userServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/user-service
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: http://localhost:9000/oauth2/jwks
+            # User admin read operations -> user-service
+            - id: user-admin-read-operations
+              uri: lb://user-service
+              predicates:
+                - Path=/api/users/admin/**
+                - Method=GET
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: userServiceAdminCircuitBreaker
+                    fallbackUri: forward:/fallback/user-service
+
+            # User write operations -> auth-server (master)
+            - id: user-write-operations
+              uri: lb://auth-server
+              predicates:
+                - Path=/api/users/profile/**
+                - Method=PUT,PATCH,DELETE
+              filters:
+                # Rewrite /api/users/profile/{userId} -> /users/{userId}
+                - RewritePath=/api/users/profile/(?<userId>[^/]+), /users/${userId}
+
+            # User admin mutations -> auth-server (master)
+            - id: user-admin-write-operations
+              uri: lb://auth-server
+              predicates:
+                - Path=/api/users/admin/**
+                - Method=PUT,PATCH,DELETE
+              filters:
+                # Rewrite /api/users/admin/... -> /users/...
+                - RewritePath=/api/users/admin/(?<segment>.*), /users/${segment}
 
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-
-springdoc:
-  api-docs:
-    enabled: true
-    path: /v3/api-docs
-  swagger-ui:
-    urls:
-      - name: auth-server
-        url: http://localhost:9000/v3/api-docs
-      - name: user-service
-        url: http://localhost:8082/v3/api-docs
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
 
 logging:
   level:
     root: INFO
+    org.springframework.cloud.gateway: DEBUG
     org.springframework.web: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.security.oauth2: TRACE
+    org.springframework.http: DEBUG
+    org.springframework.boot.autoconfigure: INFO
+

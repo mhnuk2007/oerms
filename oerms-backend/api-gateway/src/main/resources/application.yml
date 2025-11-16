@@ -11,76 +11,311 @@ spring:
         webflux:
           discovery:
             locator:
-              enabled: true
+              enabled: false # Set to false as all routes are defined manually
               lower-case-service-id: true
-
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
           routes:
-            # Auth Server Routes (Write Operations)
-            - id: auth-register
+            # ============================================
+            # OPENAPI ROUTES (MUST BE FIRST!)
+            # ============================================
+            # Auth Server OpenAPI
+            - id: auth-server-openapi
               uri: lb://auth-server
               predicates:
-                - Path=/auth/register
+                - Path=/auth-server/v3/api-docs/**
               filters:
-                - RewritePath=/auth/register, /auth/register
+                - RewritePath=/auth-server/(?<segment>.*), /$\{segment}
 
-            - id: auth-oauth
-              uri: lb://auth-server
+            - id: exam-service-openapi
+              uri: lb://exam-service
               predicates:
-                - Path=/oauth2/**
+                - Path=/exam-service/v3/api-docs/**
+              filters:
+                - RewritePath=/exam-service/(?<segment>.*), /$\{segment}
 
-            # User read operations -> user-service (cached replica)
-            - id: user-read-operations
+            - id: question-service-openapi
+              uri: lb://question-service
+              predicates:
+                - Path=/question-service/v3/api-docs/**
+              filters:
+                - RewritePath=/question-service/(?<segment>.*), /$\{segment}
+
+            - id: user-service-openapi
               uri: lb://user-service
               predicates:
-                - Path=/api/users/profile/**
-                - Method=GET
+                - Path=/user-service/v3/api-docs/**
+              filters:
+                - RewritePath=/user-service/(?<segment>.*), /$\{segment}
+
+            - id: attempt-service-openapi
+              uri: lb://attempt-service
+              predicates:
+                - Path=/attempt-service/v3/api-docs/**
+              filters:
+                - RewritePath=/attempt-service/(?<segment>.*), /$\{segment}
+
+            - id: result-service-openapi
+              uri: lb://result-service
+              predicates:
+                - Path=/result-service/v3/api-docs/**
+              filters:
+                - RewritePath=/result-service/(?<segment>.*), /$\{segment}
+
+            - id: notification-service-openapi
+              uri: lb://notification-service
+              predicates:
+                - Path=/notification-service/v3/api-docs/**
+              filters:
+                - RewritePath=/notification-service/(?<segment>.*), /$\{segment}
+
+            # ============================================
+            # API ROUTES
+            # ============================================
+            - id: auth-server
+              uri: lb://auth-server
+              predicates:
+                - Path=/oauth2/**,/login/**,/logout/**,/.well-known/**,/api/auth/**
+
+            - id: exam-service
+              uri: lb://exam-service
+              predicates:
+                - Path=/api/exams/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: examServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/exam-service
+
+            - id: question-service
+              uri: lb://question-service
+              predicates:
+                - Path=/api/questions/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: questionServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/question-service
+
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/users/**
               filters:
                 - name: CircuitBreaker
                   args:
                     name: userServiceCircuitBreaker
                     fallbackUri: forward:/fallback/user-service
 
-            # User admin read operations -> user-service
-            - id: user-admin-read-operations
-              uri: lb://user-service
+            - id: attempt-service
+              uri: lb://attempt-service
               predicates:
-                - Path=/api/users/admin/**
-                - Method=GET
+                - Path=/api/attempts/**
               filters:
                 - name: CircuitBreaker
                   args:
-                    name: userServiceAdminCircuitBreaker
-                    fallbackUri: forward:/fallback/user-service
+                    name: attemptServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/attempt-service
 
-            # User write operations -> auth-server (master)
-            - id: user-write-operations
+            - id: result-service
+              uri: lb://result-service
+              predicates:
+                - Path=/api/results/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: resultServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/result-service
+
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notifications/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: notificationServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/notification-service
+
+            # ============================================
+            # AUTH SERVER ROUTES
+            # ============================================
+            - id: auth-server
               uri: lb://auth-server
               predicates:
-                - Path=/api/users/profile/**
-                - Method=PUT,PATCH,DELETE
-              filters:
-                # Rewrite /api/users/profile/{userId} -> /users/{userId}
-                - RewritePath=/api/users/profile/(?<userId>[^/]+), /users/${userId}
+                - Path=/oauth2/**,/login/**,/logout/**
 
-            # User admin mutations -> auth-server (master)
-            - id: user-admin-write-operations
-              uri: lb://auth-server
-              predicates:
-                - Path=/api/users/admin/**
-                - Method=PUT,PATCH,DELETE
-              filters:
-                # Rewrite /api/users/admin/... -> /users/...
-                - RewritePath=/api/users/admin/(?<segment>.*), /users/${segment}
+          # CORS Configuration
+          globalcors:
+            corsConfigurations:
+              '[/**]':
+                allowedOriginPatterns: "*"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - PATCH
+                  - OPTIONS
+                allowedHeaders: "*"
+                allowCredentials: true
+                maxAge: 3600
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Externalize for different environments
+          issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI:http://localhost:9000}
+
+
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      # Externalize for different environments
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+# Management Endpoints
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,metrics,prometheus,gateway,routes
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      access: read_only
+springdoc:
+  # Enable API docs
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+
+  # Swagger UI Configuration
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+    # Service URLs - CRITICAL CONFIGURATION
+    urls:
+      - name: Auth Server
+        url: /auth-server/v3/api-docs
+        display-name: 🔐 Auth Server
+      - name: Exam Service
+        url: /exam-service/v3/api-docs
+        display-name: 📝 Exam Service
+      - name: Question Service
+        url: /question-service/v3/api-docs
+        display-name: ❓ Question Service
+      - name: User Service
+        url: /user-service/v3/api-docs
+        display-name: 👤 User Service
+      - name: Attempt Service
+        url: /attempt-service/v3/api-docs
+        display-name: ✍️ Attempt Service
+      - name: Result Service
+        url: /result-service/v3/api-docs
+        display-name: 📊 Result Service
+      - name: Notification Service
+        url: /notification-service/v3/api-docs
+        display-name: 🔔 Notification Service
+
+    # Default service to show (Auth Server for getting tokens first)
+    urls-primary-name: Auth Server
+
+    # OAuth2 Configuration (for testing OAuth2 endpoints)
+    oauth:
+      client-id: oerms-client
+      client-secret: secret
+      scopes:
+      - openid
+      - profile
+      - email
+      use-pkce-with-authorization-code-grant: true
+
+    # UI Configuration
+    config-url: /v3/api-docs/swagger-config
+    display-operation-id: false
+    display-request-duration: true
+    filter: true
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    persist-authorization: true
+
+    # Disable validation errors
+    validator-url: none
+
+
+  # Cache Configuration
+  cache:
+    disabled: true
+
+  # Other Settings
+  use-management-port: false
+  show-actuator: false
+  writer-with-order-by-keys: true
+
+# Resilience4j Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+    instances:
+      authServiceCircuitBreaker:
+        baseConfig: default
+      examServiceCircuitBreaker:
+        baseConfig: default
+      questionServiceCircuitBreaker:
+        baseConfig: default
+      userServiceCircuitBreaker:
+        baseConfig: default
+      attemptServiceCircuitBreaker:
+        baseConfig: default
+      resultServiceCircuitBreaker:
+        baseConfig: default
+      notificationServiceCircuitBreaker:
+        baseConfig: default
+
+# Logging
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.route: INFO
+    org.springframework.web: DEBUG
+    org.springdoc: DEBUG
+    reactor.netty: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                          allowedOrigins:
+                            - https://your-frontend-domain.com
+                          allowCredentials: true
+
 
 logging:
   level:
@@ -88,5 +323,4 @@ logging:
     org.springframework.cloud.gateway: DEBUG
     org.springframework.web: DEBUG
     org.springframework.http: DEBUG
-    org.springframework.boot.autoconfigure: INFO
-
+    org.springdoc: DEBUG

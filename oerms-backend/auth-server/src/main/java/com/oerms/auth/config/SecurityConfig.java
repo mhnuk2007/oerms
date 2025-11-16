@@ -75,7 +75,20 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable()) // keep simple for dev; harden later
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/register", "/actuator/**").permitAll()
+                        // Public endpoints
+                        .requestMatchers(
+                                // Public endpoints
+                                "/auth/register",
+                                "/actuator/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**",
+                                "/webjars/**",
+                                // Documentation endpoints
+                                "/api/auth/**"
+
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(Customizer.withDefaults());
@@ -90,22 +103,27 @@ public class SecurityConfig {
                 .clientId("oerms-web-client")
                 .clientSecret(encoder.encode("secret1"))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri("http://127.0.0.1:8080/login/oauth2/code/oerms-web-client")
+                .redirectUri("http://localhost:3000/auth/callback") // React/Next.js callback
                 .postLogoutRedirectUri("http://127.0.0.1:8080/")
+                .postLogoutRedirectUri("http://localhost:3000/")
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
-                .tokenSettings(
-                        TokenSettings.builder()
-                                .accessTokenTimeToLive(Duration.ofHours(1))
-                                .refreshTokenTimeToLive(Duration.ofDays(1))
-                                .build()
-                )
+                .scope(OidcScopes.EMAIL)
+                .clientSettings(ClientSettings.builder()
+                        .requireAuthorizationConsent(false)
+                        .requireProofKey(false)
+                        .build())
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofHours(1))
+                        .refreshTokenTimeToLive(Duration.ofDays(1))
+                        .reuseRefreshTokens(false)
+                        .build())
                 .build();
-
-        // M2M client → Client Credentials
+        // Machine-to-Machine Client → Client Credentials Flow
         RegisteredClient m2mClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("oerms-m2m")
                 .clientSecret(encoder.encode("supersecret"))
@@ -113,9 +131,31 @@ public class SecurityConfig {
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scope("read")
                 .scope("write")
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofHours(2))
+                        .build())
                 .build();
 
-        return new InMemoryRegisteredClientRepository(webClient, m2mClient);
+        // Service Account Client → Password Grant (for testing/development)
+        RegisteredClient serviceClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("oerms-service")
+                .clientSecret(encoder.encode("service-secret"))
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .authorizationGrantType(AuthorizationGrantType.PASSWORD)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .scope(OidcScopes.EMAIL)
+                .scope("read")
+                .scope("write")
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofHours(1))
+                        .refreshTokenTimeToLive(Duration.ofDays(7))
+                        .build())
+                .build();
+
+        return new InMemoryRegisteredClientRepository(webClient, m2mClient, serviceClient);
     }
 
     @Bean
@@ -133,14 +173,13 @@ public class SecurityConfig {
 
     private static KeyPair generateRsaKey() {
         try {
-            KeyPairGenerator g = KeyPairGenerator.getInstance("RSA");
-            g.initialize(2048);
-            return g.generateKeyPair();
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            return generator.generateKeyPair();
         } catch (Exception e) {
-            throw new IllegalStateException(e);
+            throw new IllegalStateException("Failed to generate RSA key pair", e);
         }
     }
-
 
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer(UserRepository repo) {
@@ -148,19 +187,27 @@ public class SecurityConfig {
             if (context.getPrincipal() != null) {
                 String email = context.getPrincipal().getName();
                 repo.findByEmail(email).ifPresent(user -> {
-                    // Add roles claim
+                    // Add custom claims
+                    context.getClaims().claim("userId", user.getId());
+                    context.getClaims().claim("email", user.getEmail());
+                    context.getClaims().claim("username", user.getUsername());
                     context.getClaims().claim("roles", user.getRoles());
+                    context.getClaims().claim("authorities", user.getRoles());
 
-                    // Map roles → scopes
+                    // Map roles to scopes for fine-grained access control
                     context.getClaims().claim("scope", user.getRoles().stream()
-                            .map(role -> role.equals("ROLE_STUDENT") ? "read" :
-                                    role.equals("ROLE_TEACHER") ? "write" :
-                                            role.equals("ROLE_ADMIN") ? "admin" : role)
+                            .map(role -> {
+                                if ("ROLE_STUDENT".equals(role)) return "read";
+                                if ("ROLE_TEACHER".equals(role)) return "write";
+                                if ("ROLE_ADMIN".equals(role)) return "admin";
+                                return role;
+                            })
                             .toList());
                 });
             }
         };
     }
+
 
 
     @Bean
@@ -182,10 +229,14 @@ public class SecurityConfig {
 
 
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http, UserRepository userRepository) throws Exception {
+    public AuthenticationManager authenticationManager(
+            HttpSecurity http, UserRepository userRepository
+    ) throws Exception {
 
-        AuthenticationManagerBuilder authManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder.class);
-        authManagerBuilder.userDetailsService(new UserDetailsServiceImpl(userRepository))
+        AuthenticationManagerBuilder authManagerBuilder =
+                http.getSharedObject(AuthenticationManagerBuilder.class);
+        authManagerBuilder
+                .userDetailsService(new UserDetailsServiceImpl(userRepository))
                 .passwordEncoder(passwordEncoder());
         return authManagerBuilder.build();
     }

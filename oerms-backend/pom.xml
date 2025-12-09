@@ -1,36 +1,65 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- ========================= -->
+    <!-- Project Coordinates      -->
+    <!-- ========================= -->
     <groupId>com.oerms</groupId>
     <artifactId>oerms-parent</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
+    <name>OERMS Parent</name>
 
+    <!-- ========================= -->
+    <!-- Modules                  -->
+    <!-- ========================= -->
     <modules>
         <module>system-registry</module>
         <module>common</module>
         <module>api-gateway</module>
-        <module>user-service</module>
         <module>auth-server</module>
+        <module>user-service</module>
         <module>exam-service</module>
         <module>question-service</module>
+        <module>attempt-service</module>
+        <module>result-service</module>
+        <module>notification-service</module>
     </modules>
 
+    <!-- ========================= -->
+    <!-- Centralized Versions     -->
+    <!-- ========================= -->
     <properties>
         <java.version>17</java.version>
-        <spring.boot.version>3.5.7</spring.boot.version>
+        <spring.boot.version>3.5.8</spring.boot.version>
         <spring.cloud.version>2025.0.0</spring.cloud.version>
-        <postgres.driver.version>42.7.3</postgres.driver.version>
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
-        <resilience4j.version>2.2.0</resilience4j.version>
-        <lombok.version>1.18.30</lombok.version>
-        <springdoc.version>2.3.0</springdoc.version>
+
+        <lombok.version>1.18.42</lombok.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
+
+        <postgresql.version>42.7.8</postgresql.version>
+        <flyway.version>11.16.0</flyway.version>
+        <hikari.version>6.3.0</hikari.version>
+        <kafka.version>3.3.10</kafka.version>
+
+        <springdoc.version>2.8.14</springdoc.version>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <!-- ========================= -->
+    <!-- Dependency Management     -->
+    <!-- ========================= -->
     <dependencyManagement>
         <dependencies>
+
+            <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
@@ -38,6 +67,8 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <!-- Spring Cloud BOM -->
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
@@ -45,33 +76,96 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <!-- Internal shared module -->
             <dependency>
-                <groupId>io.github.resilience4j</groupId>
-                <artifactId>resilience4j-bom</artifactId>
-                <version>${resilience4j.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
+                <groupId>com.oerms</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
             </dependency>
+
+            <!-- MapStruct BOM -->
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct</artifactId>
+                <version>${mapstruct.version}</version>
+            </dependency>
+
+            <!-- Database & Migration -->
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${postgresql.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-core</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.zaxxer</groupId>
+                <artifactId>HikariCP</artifactId>
+                <version>${hikari.version}</version>
+            </dependency>
+
+            <!-- Kafka -->
+            <dependency>
+                <groupId>org.springframework.kafka</groupId>
+                <artifactId>spring-kafka</artifactId>
+                <version>${kafka.version}</version>
+            </dependency>
+
+            <!-- API Documentation -->
             <dependency>
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
             </dependency>
+
             <dependency>
-                <groupId>org.springdoc</groupId>
-                <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
-                <version>${springdoc.version}</version>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-models</artifactId>
+                <version>2.2.38</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
 
+    <!-- ========================= -->
+    <!-- Parent-Level Dependencies -->
+    <!-- ========================= -->
+    <dependencies>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Lombok + MapStruct binding -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok-mapstruct-binding</artifactId>
+            <version>${lombok-mapstruct-binding.version}</version>
+        </dependency>
+
+    </dependencies>
+
+    <!-- ========================= -->
+    <!-- Build Plugins             -->
+    <!-- ========================= -->
     <build>
         <pluginManagement>
             <plugins>
+
+                <!-- Java Compiler -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.11.0</version>
+                    <version>3.13.0</version>
                     <configuration>
                         <release>${java.version}</release>
                         <compilerArgs>
@@ -86,22 +180,31 @@
                             <path>
                                 <groupId>org.projectlombok</groupId>
                                 <artifactId>lombok</artifactId>
-                                <version>${lombok.version}</version> <!-- You'll need to add lombok.version to properties -->
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok-mapstruct-binding</artifactId>
+                                <version>${lombok-mapstruct-binding.version}</version>
                             </path>
                         </annotationProcessorPaths>
                     </configuration>
                 </plugin>
+
+                <!-- Spring Boot Build Plugin -->
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
-                    <version>${spring.boot.version}</version>
+                    <version>3.5.8</version>
                     <configuration>
                         <image>
                             <name>oerms/${project.artifactId}:${project.version}</name>
                         </image>
                     </configuration>
                 </plugin>
+
             </plugins>
         </pluginManagement>
     </build>
+
 </project>

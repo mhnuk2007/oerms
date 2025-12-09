@@ -1,0 +1,234 @@
+package com.oerms.userservice.controller;
+
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.userservice.dto.*;
+import com.oerms.userservice.service.UserProfileService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.*;
+import org.springframework.http.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+@Slf4j
+public class UserProfileController {
+
+    private final UserProfileService profileService;
+
+    /*---------------------------------------------------
+     *  PROFILE CREATION & UPDATE
+     *---------------------------------------------------*/
+
+    @PostMapping("/profile")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> createProfile(
+            @Valid @RequestBody CreateProfileRequest request,
+            Authentication authentication) {
+
+        UUID userId = extractUserId(authentication);
+        String email = extractEmail(authentication);
+
+        log.debug("Creating profile for userId={}", userId);
+        UserProfileResponse response = profileService.createProfile(userId, email, request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Profile created successfully", response));
+    }
+
+    @PutMapping("/{userId}/profile")
+    @PreAuthorize("#userId.toString() == authentication.token.claims['user_id'] or hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
+            @PathVariable UUID userId,
+            @Valid @RequestBody UpdateProfileRequest request) {
+
+        log.debug("Updating profile for userId={}", userId);
+        UserProfileResponse updated = profileService.updateProfile(userId, request);
+
+        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updated));
+    }
+
+    /*---------------------------------------------------
+     *  PROFILE GET
+     *---------------------------------------------------*/
+
+    @GetMapping("/profile/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getMyProfile(Authentication authentication) {
+        UUID userId = extractUserId(authentication);
+
+        log.debug("Fetching my profile userId={}", userId);
+        UserProfileResponse response = profileService.getProfileByUserId(userId);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{userId}/profile")
+    @PreAuthorize("#userId.toString() == authentication.token.claims['user_id'] or hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getProfileByUserId(@PathVariable UUID userId) {
+
+        log.debug("Fetching profile userId={}", userId);
+        UserProfileResponse response = profileService.getProfileByUserId(userId);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /*---------------------------------------------------
+     *  QUERY + SEARCH
+     *---------------------------------------------------*/
+
+    @GetMapping("/profiles")
+    @PreAuthorize("hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<Page<ProfileSummaryResponse>>> getAllProfiles(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir) {
+
+        Sort sort = sortDir.equalsIgnoreCase("ASC") ?
+                Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        log.debug("Fetching paginated profiles");
+        Page<ProfileSummaryResponse> profiles = profileService.getAllProfiles(pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(profiles));
+    }
+
+    @GetMapping("/profiles/search")
+    @PreAuthorize("hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<Page<ProfileSummaryResponse>>> searchProfiles(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ProfileSummaryResponse> profiles = profileService.searchProfiles(keyword, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(profiles));
+    }
+
+    /*---------------------------------------------------
+     *  PICTURE UPLOAD + DELETE
+     *---------------------------------------------------*/
+
+    @PostMapping(value = "/{userId}/profile/picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("#userId.toString() == authentication.token.claims['user_id'] or hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<FileUploadResponse>> uploadProfilePicture(
+            @PathVariable UUID userId,
+            @RequestParam("file") MultipartFile file) {
+
+        try {
+            log.debug("Uploading picture for userId={}", userId);
+            FileUploadResponse response = profileService.uploadProfilePicture(userId, file);
+
+            return ResponseEntity.ok(ApiResponse.success("Picture uploaded", response));
+
+        } catch (IOException e) {
+            log.error("File upload error: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Failed to upload picture: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{userId}/profile/picture")
+    @PreAuthorize("#userId.toString() == authentication.token.claims['user_id'] or hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<Void>> deleteProfilePicture(@PathVariable UUID userId) {
+
+        log.debug("Deleting picture for userId={}", userId);
+        profileService.deleteProfilePicture(userId);
+
+        return ResponseEntity.ok(ApiResponse.success("Picture deleted"));
+    }
+
+    /*---------------------------------------------------
+     *  INSTITUTIONS
+     *---------------------------------------------------*/
+
+    @PostMapping("/{userId}/profile/institutions")
+    @PreAuthorize("#userId.toString() == authentication.token.claims['user_id'] or hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<Void>> addInstitution(
+            @PathVariable UUID userId,
+            @Valid @RequestBody InstitutionRequest request) {
+
+        profileService.addInstitution(userId, request.getInstitution());
+        return ResponseEntity.ok(ApiResponse.success("Institution added"));
+    }
+
+    @DeleteMapping("/{userId}/profile/institutions")
+    @PreAuthorize("#userId.toString() == authentication.token.claims['user_id'] or hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<Void>> removeInstitution(
+            @PathVariable UUID userId,
+            @Valid @RequestBody InstitutionRequest request) {
+
+        profileService.removeInstitution(userId, request.getInstitution());
+        return ResponseEntity.ok(ApiResponse.success("Institution removed"));
+    }
+
+    /*---------------------------------------------------
+     *  ACTIVATE / DEACTIVATE
+     *---------------------------------------------------*/
+
+    @PatchMapping("/{userId}/profile/deactivate")
+    @PreAuthorize("#userId.toString() == authentication.token.claims['user_id'] or hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<Void>> deactivateProfile(@PathVariable UUID userId) {
+
+        profileService.deactivateProfile(userId);
+        return ResponseEntity.ok(ApiResponse.success("Profile deactivated"));
+    }
+
+    @PatchMapping("/{userId}/profile/activate")
+    @PreAuthorize("#userId.toString() == authentication.token.claims['user_id'] or hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<Void>> activateProfile(@PathVariable UUID userId) {
+
+        profileService.activateProfile(userId);
+        return ResponseEntity.ok(ApiResponse.success("Profile activated"));
+    }
+
+    /*---------------------------------------------------
+     *  STATS + HEALTH
+     *---------------------------------------------------*/
+
+    @GetMapping("/profile/stats")
+    @PreAuthorize("hasAuthority('user:manage')")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getStats() {
+        Map<String, Long> stats = Map.of(
+                "completedProfiles", profileService.getCompletedProfilesCount(),
+                "activeProfiles", profileService.getActiveProfilesCount()
+        );
+        return ResponseEntity.ok(ApiResponse.success(stats));
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        return ResponseEntity.ok(Map.of(
+                "status", "UP",
+                "service", "user-service",
+                "timestamp", String.valueOf(System.currentTimeMillis())
+        ));
+    }
+
+    /*---------------------------------------------------
+     *  HELPERS
+     *---------------------------------------------------*/
+
+    private UUID extractUserId(Authentication authentication) {
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        return UUID.fromString(jwt.getClaimAsString("user_id"));
+    }
+
+    private String extractEmail(Authentication authentication) {
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        return jwt.getClaimAsString("email");
+    }
+}

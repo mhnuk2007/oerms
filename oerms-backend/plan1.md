@@ -1,890 +1,556 @@
+## attempt-service/pom.xml
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<modelVersion>4.0.0</modelVersion>
+<parent>
+<groupId>com.oerms</groupId>
+<artifactId>oerms-parent</artifactId>
+<version>1.0.0</version>
+</parent>
+<artifactId>attempt-service</artifactId>
+<dependencies>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.cloud</groupId>
+<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.cloud</groupId>
+<artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.kafka</groupId>
+<artifactId>spring-kafka</artifactId>
+</dependency>
+<dependency>
+<groupId>org.postgresql</groupId>
+<artifactId>postgresql</artifactId>
+</dependency>
+<dependency>
+<groupId>com.oerms</groupId>
+<artifactId>common-lib</artifactId>
+</dependency>
+</dependencies>
+</project>
+```
 
-# AUTH-SERVER: Master User Data (Updated)
-
-## User.java (auth-server - UPDATED)
+## AttemptServiceApplication.java
 ```java
-package com.oerms.auth.entity;
+package com.oerms.attempt;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+
+@SpringBootApplication(scanBasePackages = {"com.oerms.attempt", "com.oerms.common"})
+@EnableDiscoveryClient
+@EnableFeignClients
+@EnableJpaAuditing
+public class AttemptServiceApplication {
+public static void main(String[] args) {
+SpringApplication.run(AttemptServiceApplication.class, args);
+}
+}
+```
+
+## Attempt.java (Entity)
+```java
+package com.oerms.attempt.entity;
+
+import com.oerms.common.entity.BaseEntity;
+import com.oerms.common.enums.AttemptStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
-import java.util.Set;
+import java.util.List;
+import java.util.UUID;
 
 @Entity
-@Table(name = "users")
-@Data
-@Builder
+@Table(name = "attempts", schema = "oerms_attempt")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+@Builder
+public class Attempt extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(unique = true, nullable = false)
-    private String username;
-    
-    @Column(unique = true, nullable = false)
-    private String email;
+    @Column(nullable = false)
+    private UUID examId;
     
     @Column(nullable = false)
-    private String password;
-    
-    @Column(name = "first_name")
-    private String firstName;
-    
-    @Column(name = "last_name")
-    private String lastName;
-    
-    private String phone;
-    
-    @Column(length = 1000)
-    private String bio;
-    
-    @Column(name = "profile_image_url")
-    private String profileImageUrl;
-    
-    @Column(name = "date_of_birth")
-    private LocalDateTime dateOfBirth;
-    
-    private String address;
-    private String city;
-    private String state;
-    private String country;
+    private UUID studentId;
     
     @Column(nullable = false)
-    private Boolean enabled = true;
+    private LocalDateTime startedAt;
     
-    @Column(name = "account_non_expired")
-    private Boolean accountNonExpired = true;
+    private LocalDateTime expiresAt;
     
-    @Column(name = "account_non_locked")
-    private Boolean accountNonLocked = true;
+    private LocalDateTime submittedAt;
     
-    @Column(name = "credentials_non_expired")
-    private Boolean credentialsNonExpired = true;
+    @Column(nullable = false)
+    private Integer durationSeconds;
     
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "role")
-    private Set<String> roles;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AttemptStatus status = AttemptStatus.IN_PROGRESS;
     
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<Answer> answers;
     
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(nullable = false)
+    private Integer currentQuestionIndex = 0;
     
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
+    @Column(nullable = false)
+    private Integer attemptNumber = 1;
     
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
+    private Integer timeSpentSeconds = 0;
+    
+    private String ipAddress;
+    
+    private String userAgent;
 }
 ```
-## UserEvent.java (auth-server)
+
+## Answer.java
 ```java
-package com.oerms.auth.event;
+package com.oerms.attempt.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.Set;
+import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserEvent {
-private String eventType; // user.created, user.updated, user.deleted
-private Long userId;
-private String username;
-private String email;
-private String firstName;
-private String lastName;
-private String phone;
-private String bio;
-private String profileImageUrl;
-private LocalDateTime dateOfBirth;
-private String address;
-private String city;
-private String state;
-private String country;
-private Set<String> roles;
-private Boolean enabled;
-private LocalDateTime timestamp;
+public class Answer implements Serializable {
+private UUID questionId;
+private String answer; // For subjective
+private List<String> selectedOptions; // For MCQ
+private LocalDateTime answeredAt;
+private Integer timeSpentSeconds;
 }
 ```
-## AuthService.java (auth-server - UPDATED)
-```java
-package com.oerms.auth.service;
 
-import com.oerms.auth.dto.RegisterRequest;
-import com.oerms.auth.dto.UpdateUserRequest;
-import com.oerms.auth.dto.UserResponse;
-import com.oerms.auth.entity.User;
-import com.oerms.auth.event.UserEvent;
-import com.oerms.auth.repository.UserRepository;
-import com.oerms.common.exception.BadRequestException;
+## AttemptRepository.java
+```java
+package com.oerms.attempt.repository;
+
+import com.oerms.attempt.entity.Attempt;
+import com.oerms.common.enums.AttemptStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface AttemptRepository extends JpaRepository<Attempt, UUID> {
+
+    Page<Attempt> findByStudentIdAndDeletedFalse(UUID studentId, Pageable pageable);
+    
+    Page<Attempt> findByExamIdAndDeletedFalse(UUID examId, Pageable pageable);
+    
+    @Query("SELECT COUNT(a) FROM Attempt a WHERE a.studentId = :studentId AND a.examId = :examId AND a.deleted = false")
+    Integer countByStudentIdAndExamId(UUID studentId, UUID examId);
+    
+    List<Attempt> findByStudentIdAndExamIdAndStatusAndDeletedFalse(
+            UUID studentId, UUID examId, AttemptStatus status);
+}
+```
+
+## AttemptService.java
+```java
+package com.oerms.attempt.service;
+
+import com.oerms.attempt.dto.*;
+import com.oerms.attempt.entity.Answer;
+import com.oerms.attempt.entity.Attempt;
+import com.oerms.attempt.repository.AttemptRepository;
+import com.oerms.common.dto.PageResponse;
+import com.oerms.common.enums.AttemptStatus;
+import com.oerms.common.exception.BusinessException;
+import com.oerms.common.exception.ConflictException;
 import com.oerms.common.exception.ResourceNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
-public class AuthService {
+public class AttemptService {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final KafkaTemplate<String, UserEvent> kafkaTemplate;
+    private final AttemptRepository attemptRepository;
+    private final ExamServiceClient examServiceClient;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
     
-    private static final String USER_EVENTS_TOPIC = "user-events";
-
     @Transactional
-    public UserResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new BadRequestException("Username already exists");
+    public AttemptDto startAttempt(UUID examId, UUID studentId, HttpServletRequest request) {
+        // Get exam details
+        ExamDto exam = examServiceClient.getExamById(examId);
+        
+        // Validate exam timing
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(exam.getStartTime())) {
+            throw new BusinessException("Exam has not started yet");
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already exists");
+        if (now.isAfter(exam.getEndTime())) {
+            throw new BusinessException("Exam has ended");
         }
-
-        User user = User.builder()
-            .username(request.getUsername())
-            .email(request.getEmail())
-            .password(passwordEncoder.encode(request.getPassword()))
-            .firstName(request.getFirstName())
-            .lastName(request.getLastName())
-            .roles(Set.of("ROLE_STUDENT"))
-            .enabled(true)
-            .accountNonExpired(true)
-            .accountNonLocked(true)
-            .credentialsNonExpired(true)
-            .build();
-
-        user = userRepository.save(user);
         
-        // Publish user.created event
-        publishUserEvent("user.created", user);
+        // Check if student has active attempt
+        List<Attempt> activeAttempts = attemptRepository
+                .findByStudentIdAndExamIdAndStatusAndDeletedFalse(
+                        studentId, examId, AttemptStatus.IN_PROGRESS);
         
-        log.info("User registered: {}", user.getUsername());
-        return mapToResponse(user);
+        if (!activeAttempts.isEmpty()) {
+            throw new ConflictException("You already have an active attempt for this exam");
+        }
+        
+        // Check allowed attempts
+        Integer attemptCount = attemptRepository.countByStudentIdAndExamId(studentId, examId);
+        if (attemptCount >= exam.getAllowedAttempts()) {
+            throw new ConflictException("Maximum number of attempts reached");
+        }
+        
+        // Create new attempt
+        Attempt attempt = Attempt.builder()
+                .examId(examId)
+                .studentId(studentId)
+                .startedAt(now)
+                .expiresAt(now.plusSeconds(exam.getDurationSeconds()))
+                .durationSeconds(exam.getDurationSeconds())
+                .status(AttemptStatus.IN_PROGRESS)
+                .answers(new ArrayList<>())
+                .currentQuestionIndex(0)
+                .attemptNumber(attemptCount + 1)
+                .ipAddress(getClientIp(request))
+                .userAgent(request.getHeader("User-Agent"))
+                .build();
+        
+        attempt = attemptRepository.save(attempt);
+        
+        // Publish event
+        kafkaTemplate.send("exam.attempts.started", attempt.getId().toString());
+        
+        log.info("Attempt started for exam: {} by student: {}", examId, studentId);
+        
+        return mapToDto(attempt);
     }
-
-    public UserResponse getUser(Long userId) {
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-        return mapToResponse(user);
-    }
-
-    public UserResponse getUserByUsername(String username) {
-        User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
-        return mapToResponse(user);
-    }
-
+    
     @Transactional
-    public UserResponse updateUser(Long userId, UpdateUserRequest request) {
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+    public void saveAnswers(UUID attemptId, SaveAnswersRequest request) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt not found"));
         
-        // Update fields
-        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
-        if (request.getLastName() != null) user.setLastName(request.getLastName());
-        if (request.getPhone() != null) user.setPhone(request.getPhone());
-        if (request.getBio() != null) user.setBio(request.getBio());
-        if (request.getProfileImageUrl() != null) user.setProfileImageUrl(request.getProfileImageUrl());
-        if (request.getDateOfBirth() != null) user.setDateOfBirth(request.getDateOfBirth());
-        if (request.getAddress() != null) user.setAddress(request.getAddress());
-        if (request.getCity() != null) user.setCity(request.getCity());
-        if (request.getState() != null) user.setState(request.getState());
-        if (request.getCountry() != null) user.setCountry(request.getCountry());
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new BusinessException("Cannot save answers for a completed attempt");
+        }
         
-        user = userRepository.save(user);
+        if (LocalDateTime.now().isAfter(attempt.getExpiresAt())) {
+            throw new BusinessException("Attempt has expired");
+        }
         
-        // Publish user.updated event
-        publishUserEvent("user.updated", user);
+        // Update answers
+        List<Answer> currentAnswers = attempt.getAnswers();
+        if (currentAnswers == null) {
+            currentAnswers = new ArrayList<>();
+        }
         
-        log.info("User updated: {}", user.getId());
-        return mapToResponse(user);
+        for (Answer newAnswer : request.getAnswers()) {
+            // Remove existing answer for this question
+            currentAnswers.removeIf(a -> a.getQuestionId().equals(newAnswer.getQuestionId()));
+            currentAnswers.add(newAnswer);
+        }
+        
+        attempt.setAnswers(currentAnswers);
+        attempt.setCurrentQuestionIndex(request.getCurrentQuestionIndex());
+        
+        attemptRepository.save(attempt);
+        log.info("Answers saved for attempt: {}", attemptId);
     }
-
+    
     @Transactional
-    public void deleteUser(Long userId) {
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+    public SubmitAttemptResponse submitAttempt(UUID attemptId, List<Answer> finalAnswers) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt not found"));
         
-        userRepository.delete(user);
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new BusinessException("Attempt is already submitted");
+        }
         
-        // Publish user.deleted event
-        publishUserEvent("user.deleted", user);
+        LocalDateTime now = LocalDateTime.now();
         
-        log.info("User deleted: {}", userId);
+        // Update final answers if provided
+        if (finalAnswers != null && !finalAnswers.isEmpty()) {
+            attempt.setAnswers(finalAnswers);
+        }
+        
+        attempt.setSubmittedAt(now);
+        attempt.setStatus(AttemptStatus.SUBMITTED);
+        attempt.setTimeSpentSeconds(
+                (int) java.time.Duration.between(attempt.getStartedAt(), now).getSeconds());
+        
+        attempt = attemptRepository.save(attempt);
+        
+        // Publish event for grading
+        kafkaTemplate.send("exam.attempts.submitted", attempt.getId().toString());
+        
+        log.info("Attempt submitted: {}", attemptId);
+        
+        return SubmitAttemptResponse.builder()
+                .message("Exam submitted successfully")
+                .attemptId(attempt.getId())
+                .submittedAt(attempt.getSubmittedAt())
+                .status(attempt.getStatus())
+                .build();
     }
-
-    public List<UserResponse> getAllUsers() {
-        return userRepository.findAll().stream()
-            .map(this::mapToResponse)
-            .toList();
+    
+    @Transactional(readOnly = true)
+    public AttemptDto getAttemptById(UUID id) {
+        Attempt attempt = attemptRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt not found"));
+        return mapToDto(attempt);
     }
-
-    @Transactional
-    public UserResponse updateRoles(Long userId, Set<String> roles) {
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+    
+    @Transactional(readOnly = true)
+    public PageResponse<AttemptDto> getStudentAttempts(UUID studentId, int page, int size) {
+        Page<Attempt> attemptPage = attemptRepository.findByStudentIdAndDeletedFalse(
+                studentId, PageRequest.of(page, size));
         
-        user.setRoles(roles);
-        user = userRepository.save(user);
-        
-        // Publish user.updated event
-        publishUserEvent("user.updated", user);
-        
-        log.info("User roles updated: {} - Roles: {}", userId, roles);
-        return mapToResponse(user);
+        return PageResponse.<AttemptDto>builder()
+                .content(attemptPage.getContent().stream().map(this::mapToDto).toList())
+                .totalElements(attemptPage.getTotalElements())
+                .totalPages(attemptPage.getTotalPages())
+                .size(attemptPage.getSize())
+                .number(attemptPage.getNumber())
+                .build();
     }
-
-    @Transactional
-    public UserResponse toggleUserStatus(Long userId) {
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+    
+    @Transactional(readOnly = true)
+    public PageResponse<AttemptDto> getExamAttempts(UUID examId, int page, int size) {
+        Page<Attempt> attemptPage = attemptRepository.findByExamIdAndDeletedFalse(
+                examId, PageRequest.of(page, size));
         
-        user.setEnabled(!user.getEnabled());
-        user = userRepository.save(user);
-        
-        // Publish user.updated event
-        publishUserEvent("user.updated", user);
-        
-        log.info("User status toggled: {} - Enabled: {}", userId, user.getEnabled());
-        return mapToResponse(user);
+        return PageResponse.<AttemptDto>builder()
+                .content(attemptPage.getContent().stream().map(this::mapToDto).toList())
+                .totalElements(attemptPage.getTotalElements())
+                .totalPages(attemptPage.getTotalPages())
+                .size(attemptPage.getSize())
+                .number(attemptPage.getNumber())
+                .build();
     }
-
-    private void publishUserEvent(String eventType, User user) {
-        UserEvent event = UserEvent.builder()
-            .eventType(eventType)
-            .userId(user.getId())
-            .username(user.getUsername())
-            .email(user.getEmail())
-            .firstName(user.getFirstName())
-            .lastName(user.getLastName())
-            .phone(user.getPhone())
-            .bio(user.getBio())
-            .profileImageUrl(user.getProfileImageUrl())
-            .dateOfBirth(user.getDateOfBirth())
-            .address(user.getAddress())
-            .city(user.getCity())
-            .state(user.getState())
-            .country(user.getCountry())
-            .roles(user.getRoles())
-            .enabled(user.getEnabled())
-            .timestamp(LocalDateTime.now())
-            .build();
-        
-        kafkaTemplate.send(USER_EVENTS_TOPIC, String.valueOf(user.getId()), event);
-        log.info("Published {} event for user: {}", eventType, user.getId());
+    
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
-
-    private UserResponse mapToResponse(User user) {
-        return UserResponse.builder()
-            .id(user.getId())
-            .username(user.getUsername())
-            .email(user.getEmail())
-            .firstName(user.getFirstName())
-            .lastName(user.getLastName())
-            .phone(user.getPhone())
-            .bio(user.getBio())
-            .profileImageUrl(user.getProfileImageUrl())
-            .dateOfBirth(user.getDateOfBirth())
-            .address(user.getAddress())
-            .city(user.getCity())
-            .state(user.getState())
-            .country(user.getCountry())
-            .roles(user.getRoles())
-            .enabled(user.getEnabled())
-            .createdAt(user.getCreatedAt())
-            .updatedAt(user.getUpdatedAt())
-            .build();
+    
+    private AttemptDto mapToDto(Attempt attempt) {
+        return AttemptDto.builder()
+                .attemptId(attempt.getId())
+                .examId(attempt.getExamId())
+                .studentId(attempt.getStudentId())
+                .startedAt(attempt.getStartedAt())
+                .expiresAt(attempt.getExpiresAt())
+                .submittedAt(attempt.getSubmittedAt())
+                .durationSeconds(attempt.getDurationSeconds())
+                .status(attempt.getStatus())
+                .currentQuestionIndex(attempt.getCurrentQuestionIndex())
+                .attemptNumber(attempt.getAttemptNumber())
+                .timeSpentSeconds(attempt.getTimeSpentSeconds())
+                .build();
     }
 }
 ```
-## UpdateUserRequest.java (auth-server)
+
+## AttemptController.java
 ```java
-package com.oerms.auth.dto;
+package com.oerms.attempt.controller;
 
-import lombok.Data;
-import java.time.LocalDateTime;
-
-@Data
-public class UpdateUserRequest {
-private String firstName;
-private String lastName;
-private String phone;
-private String bio;
-private String profileImageUrl;
-private LocalDateTime dateOfBirth;
-private String address;
-private String city;
-private String state;
-private String country;
-}
-```
-## UserResponse.java (auth-server - UPDATED)
-```java
-package com.oerms.auth.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
-import java.util.Set;
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserResponse {
-private Long id;
-private String username;
-private String email;
-private String firstName;
-private String lastName;
-private String phone;
-private String bio;
-private String profileImageUrl;
-private LocalDateTime dateOfBirth;
-private String address;
-private String city;
-private String state;
-private String country;
-private Set<String> roles;
-private Boolean enabled;
-private LocalDateTime createdAt;
-private LocalDateTime updatedAt;
-}
-```
-## UserController.java (auth-server - NEW)
-```java
-package com.oerms.auth.controller;
-
-import com.oerms.auth.dto.UpdateUserRequest;
-import com.oerms.auth.dto.UserResponse;
-import com.oerms.auth.service.AuthService;
+import com.oerms.attempt.dto.*;
+import com.oerms.attempt.entity.Answer;
+import com.oerms.attempt.service.AttemptService;
 import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.dto.PageResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Set;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api")
 @RequiredArgsConstructor
-public class UserController {
+public class AttemptController {
 
-    private final AuthService authService;
-
-    @GetMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<UserResponse>> getUser(@PathVariable Long userId) {
-        UserResponse user = authService.getUser(userId);
-        return ResponseEntity.ok(ApiResponse.success(user));
+    private final AttemptService attemptService;
+    
+    @PostMapping("/exams/{examId}/attempts")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<AttemptDto>> startAttempt(
+            @PathVariable UUID examId,
+            @RequestHeader("X-User-Id") UUID studentId,
+            HttpServletRequest request) {
+        AttemptDto attempt = attemptService.startAttempt(examId, studentId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Attempt started successfully", attempt));
     }
-
-    @GetMapping("/username/{username}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<UserResponse>> getUserByUsername(@PathVariable String username) {
-        UserResponse user = authService.getUserByUsername(username);
-        return ResponseEntity.ok(ApiResponse.success(user));
+    
+    @GetMapping("/attempts/{attemptId}")
+    public ResponseEntity<ApiResponse<AttemptDto>> getAttemptById(@PathVariable UUID attemptId) {
+        AttemptDto attempt = attemptService.getAttemptById(attemptId);
+        return ResponseEntity.ok(ApiResponse.success(attempt));
     }
-
-    @PutMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
-            @PathVariable Long userId,
-            @Valid @RequestBody UpdateUserRequest request) {
-        UserResponse user = authService.updateUser(userId, request);
-        return ResponseEntity.ok(ApiResponse.success("User updated successfully", user));
+    
+    @PatchMapping("/attempts/{attemptId}/answers")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<String>> saveAnswers(
+            @PathVariable UUID attemptId,
+            @Valid @RequestBody SaveAnswersRequest request) {
+        attemptService.saveAnswers(attemptId, request);
+        return ResponseEntity.ok(ApiResponse.success("Answers saved successfully", "OK"));
     }
-
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
-        List<UserResponse> users = authService.getAllUsers();
-        return ResponseEntity.ok(ApiResponse.success(users));
+    
+    @PostMapping("/attempts/{attemptId}/submit")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<SubmitAttemptResponse>> submitAttempt(
+            @PathVariable UUID attemptId,
+            @RequestBody(required = false) SubmitAttemptRequest request) {
+        List<Answer> answers = request != null ? request.getAnswers() : null;
+        SubmitAttemptResponse response = attemptService.submitAttempt(attemptId, answers);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
-
-    @DeleteMapping("/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long userId) {
-        authService.deleteUser(userId);
-        return ResponseEntity.ok(ApiResponse.success("User deleted successfully", null));
+    
+    @GetMapping("/students/{studentId}/attempts")
+    public ResponseEntity<ApiResponse<PageResponse<AttemptDto>>> getStudentAttempts(
+            @PathVariable UUID studentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        PageResponse<AttemptDto> attempts = attemptService.getStudentAttempts(studentId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(attempts));
     }
-
-    @PutMapping("/{userId}/roles")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<UserResponse>> updateRoles(
-            @PathVariable Long userId,
-            @RequestBody Set<String> roles) {
-        UserResponse user = authService.updateRoles(userId, roles);
-        return ResponseEntity.ok(ApiResponse.success("User roles updated successfully", user));
-    }
-
-    @PatchMapping("/{userId}/toggle-status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<UserResponse>> toggleUserStatus(@PathVariable Long userId) {
-        UserResponse user = authService.toggleUserStatus(userId);
-        return ResponseEntity.ok(ApiResponse.success("User status updated successfully", user));
+    
+    @GetMapping("/exams/{examId}/attempts")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<PageResponse<AttemptDto>>> getExamAttempts(
+            @PathVariable UUID examId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        PageResponse<AttemptDto> attempts = attemptService.getExamAttempts(examId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(attempts));
     }
 }
 ```
-## KafkaConfig.java (auth-server - NEW)
-```java
-package com.oerms.auth.config;
 
-import com.oerms.auth.event.UserEvent;
-import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.support.serializer.JsonSerializer;
+## application.yml (attempt-service)
+```yaml
+server:
+port: 8086
 
-import java.util.HashMap;
-import java.util.Map;
+spring:
+application:
+name: attempt-service
+datasource:
+url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/oerms}
+username: ${DATABASE_USERNAME:postgres}
+password: ${DATABASE_PASSWORD:postgres}
+jpa:
+hibernate:
+ddl-auto: validate
+properties:
+hibernate:
+default_schema: oerms_attempt
+flyway:
+enabled: true
+baseline-on-migrate: true
+schemas: oerms_attempt
+kafka:
+bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+producer:
+key-serializer: org.apache.kafka.common.serialization.StringSerializer
+value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-@Configuration
-public class KafkaConfig {
-
-    @Value("${spring.kafka.bootstrap-servers}")
-    private String bootstrapServers;
-
-    @Bean
-    public ProducerFactory<String, UserEvent> userEventProducerFactory() {
-        Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        return new DefaultKafkaProducerFactory<>(configProps);
-    }
-
-    @Bean
-    public KafkaTemplate<String, UserEvent> userEventKafkaTemplate() {
-        return new KafkaTemplate<>(userEventProducerFactory());
-    }
-
-    @Bean
-    public NewTopic userEventsTopic() {
-        return new NewTopic("user-events", 3, (short) 1);
-    }
-}
+eureka:
+client:
+service-url:
+defaultZone: http://localhost:8761/eureka/
 ```
-# USER-SERVICE: Read Replica with Cache
 
-## UserProfile.java (user-service - RENAMED FROM UserCache)
-```java
-package com.oerms.user.entity;
+## V1__init_attempt_schema.sql
+```sql
+-- File: src/main/resources/db/migration/V1__init_attempt_schema.sql
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
-import java.util.Set;
+CREATE SCHEMA IF NOT EXISTS oerms_attempt;
 
-@Entity
-@Table(name = "user_profiles")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserProfile {
+CREATE TABLE IF NOT EXISTS oerms_attempt.attempts (
+id UUID PRIMARY KEY,
+exam_id UUID NOT NULL,
+student_id UUID NOT NULL,
+started_at TIMESTAMP NOT NULL,
+expires_at TIMESTAMP,
+submitted_at TIMESTAMP,
+duration_seconds INTEGER NOT NULL,
+status VARCHAR(50) NOT NULL DEFAULT 'IN_PROGRESS',
+answers JSONB,
+current_question_index INTEGER NOT NULL DEFAULT 0,
+attempt_number INTEGER NOT NULL DEFAULT 1,
+time_spent_seconds INTEGER DEFAULT 0,
+ip_address VARCHAR(50),
+user_agent VARCHAR(500),
+created_at TIMESTAMP NOT NULL,
+updated_at TIMESTAMP NOT NULL,
+created_by VARCHAR(255),
+updated_by VARCHAR(255),
+deleted BOOLEAN NOT NULL DEFAULT FALSE
+);
 
-    @Id
-    private Long id; // Same as auth-server user.id
-    
-    @Column(unique = true, nullable = false)
-    private String username;
-    
-    @Column(unique = true, nullable = false)
-    private String email;
-    
-    @Column(name = "first_name")
-    private String firstName;
-    
-    @Column(name = "last_name")
-    private String lastName;
-    
-    private String phone;
-    
-    @Column(length = 1000)
-    private String bio;
-    
-    @Column(name = "profile_image_url")
-    private String profileImageUrl;
-    
-    @Column(name = "date_of_birth")
-    private LocalDateTime dateOfBirth;
-    
-    private String address;
-    private String city;
-    private String state;
-    private String country;
-    
-    @ElementCollection
-    @CollectionTable(name = "user_profile_roles", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "role")
-    private Set<String> roles;
-    
-    private Boolean enabled;
-    
-    @Column(name = "synced_at")
-    private LocalDateTime syncedAt;
-    
-    @PrePersist
-    @PreUpdate
-    protected void onSync() {
-        syncedAt = LocalDateTime.now();
-    }
-}
-```
-## UserProfileRepository.java (user-service - UPDATED)
-
-```java
-package com.oerms.user.repository;
-
-import com.oerms.user.entity.UserProfile;
-import org.springframework.data.jpa.repository.JpaRepository;
-import java.util.Optional;
-
-public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
-Optional<UserProfile> findByUsername(String username);
-Optional<UserProfile> findByEmail(String email);
-Boolean existsById(Long id);
-}
-```
-## UserSyncService.java (user-service - NEW)
-```java
-package com.oerms.user.service;
-
-import com.oerms.common.exception.ResourceNotFoundException;
-import com.oerms.user.entity.UserProfile;
-import com.oerms.user.repository.UserProfileRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class UserSyncService {
-
-    private final UserProfileRepository userProfileRepository;
-
-    @KafkaListener(topics = "user-events", groupId = "user-service")
-    @Transactional
-    public void handleUserEvent(Map<String, Object> event) {
-        String eventType = (String) event.get("eventType");
-        Long userId = ((Number) event.get("userId")).longValue();
-        
-        log.info("Received user event: {} for user: {}", eventType, userId);
-        
-        try {
-            switch (eventType) {
-                case "user.created":
-                case "user.updated":
-                    syncUser(event);
-                    break;
-                case "user.deleted":
-                    deleteUser(userId);
-                    break;
-                default:
-                    log.warn("Unknown event type: {}", eventType);
-            }
-        } catch (Exception e) {
-            log.error("Error processing user event: {} for user: {}", eventType, userId, e);
-            // Consider implementing dead letter queue or retry logic
-        }
-    }
-
-    @Transactional
-    @CacheEvict(value = "userProfiles", key = "#event['userId']")
-    public void syncUser(Map<String, Object> event) {
-        Long userId = ((Number) event.get("userId")).longValue();
-        
-        UserProfile userProfile = userProfileRepository.findById(userId)
-            .orElse(new UserProfile());
-        
-        userProfile.setId(userId);
-        userProfile.setUsername((String) event.get("username"));
-        userProfile.setEmail((String) event.get("email"));
-        userProfile.setFirstName((String) event.get("firstName"));
-        userProfile.setLastName((String) event.get("lastName"));
-        userProfile.setPhone((String) event.get("phone"));
-        userProfile.setBio((String) event.get("bio"));
-        userProfile.setProfileImageUrl((String) event.get("profileImageUrl"));
-        userProfile.setAddress((String) event.get("address"));
-        userProfile.setCity((String) event.get("city"));
-        userProfile.setState((String) event.get("state"));
-        userProfile.setCountry((String) event.get("country"));
-        userProfile.setEnabled((Boolean) event.get("enabled"));
-        
-        // Handle dateOfBirth
-        Object dobObj = event.get("dateOfBirth");
-        if (dobObj != null) {
-            // Handle LocalDateTime deserialization from Kafka
-            userProfile.setDateOfBirth(null); // Set appropriately based on your date handling
-        }
-        
-        // Handle roles (comes as List from Kafka)
-        Object rolesObj = event.get("roles");
-        if (rolesObj instanceof List) {
-            userProfile.setRoles(new HashSet<>((List<String>) rolesObj));
-        }
-        
-        userProfileRepository.save(userProfile);
-        log.info("User profile synced for user: {}", userId);
-    }
-
-    @Transactional
-    @CacheEvict(value = "userProfiles", key = "#userId")
-    public void deleteUser(Long userId) {
-        if (userProfileRepository.existsById(userId)) {
-            userProfileRepository.deleteById(userId);
-            log.info("User profile deleted for user: {}", userId);
-        }
-    }
-
-    @Cacheable(value = "userProfiles", key = "#userId")
-    public UserProfile getUser(Long userId) {
-        return userProfileRepository.findById(userId)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-    }
-
-    @Cacheable(value = "userProfiles", key = "#username")
-    public UserProfile getUserByUsername(String username) {
-        return userProfileRepository.findByUsername(username)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
-    }
-
-    public List<UserProfile> getAllUsers() {
-        return userProfileRepository.findAll();
-    }
-}
-```
-## UserProfileService.java (user-service - UPDATED)
-```java
-package com.oerms.user.service;
-
-import com.oerms.user.client.AuthServiceClient;
-import com.oerms.user.dto.UserProfileDTO;
-import com.oerms.user.entity.UserProfile;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class UserProfileService {
-
-    private final UserSyncService userSyncService;
-    private final AuthServiceClient authServiceClient;
-
-    public UserProfileDTO getUserProfile(Long userId) {
-        try {
-            // Try cache/replica first
-            UserProfile profile = userSyncService.getUser(userId);
-            return mapToDTO(profile);
-        } catch (Exception e) {
-            // Fallback to auth-server if cache miss or sync issue
-            log.warn("User profile not in cache for user: {}, fetching from auth-server", userId);
-            return authServiceClient.getUser(userId);
-        }
-    }
-
-    public UserProfileDTO getUserProfileByUsername(String username) {
-        try {
-            UserProfile profile = userSyncService.getUserByUsername(username);
-            return mapToDTO(profile);
-        } catch (Exception e) {
-            log.warn("User profile not in cache for username: {}, fetching from auth-server", username);
-            return authServiceClient.getUserByUsername(username);
-        }
-    }
-
-    public List<UserProfileDTO> getAllUsers() {
-        List<UserProfile> profiles = userSyncService.getAllUsers();
-        return profiles.stream().map(this::mapToDTO).toList();
-    }
-
-    // Delegate write operations to auth-server
-    public UserProfileDTO updateUserProfile(Long userId, UserProfileDTO dto) {
-        return authServiceClient.updateUser(userId, dto);
-    }
-
-    private UserProfileDTO mapToDTO(UserProfile profile) {
-        return UserProfileDTO.builder()
-            .id(profile.getId())
-            .username(profile.getUsername())
-            .email(profile.getEmail())
-            .firstName(profile.getFirstName())
-            .lastName(profile.getLastName())
-            .phone(profile.getPhone())
-            .bio(profile.getBio())
-            .profileImageUrl(profile.getProfileImageUrl())
-            .dateOfBirth(profile.getDateOfBirth())
-            .address(profile.getAddress())
-            .city(profile.getCity())
-            .state(profile.getState())
-            .country(profile.getCountry())
-            .roles(profile.getRoles())
-            .enabled(profile.getEnabled())
-            .build();
-    }
-}
-```
-## UserProfileDTO.java (user-service - UPDATED)
-```java
-package com.oerms.user.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
-import java.util.Set;
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserProfileDTO {
-private Long id;
-private String username;
-private String email;
-private String firstName;
-private String lastName;
-private String phone;
-private String bio;
-private String profileImageUrl;
-private LocalDateTime dateOfBirth;
-private String address;
-private String city;
-private String state;
-private String country;
-private Set<String> roles;
-private Boolean enabled;
-}
-```
-## AuthServiceClient.java (user-service)
-```java
-package com.oerms.user.client;
-
-import com.oerms.user.dto.UserProfileDTO;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.*;
-
-@FeignClient(name = "auth-server")
-public interface AuthServiceClient {
-
-    @GetMapping("/users/{userId}")
-    UserProfileDTO getUser(@PathVariable Long userId);
-    
-    @GetMapping("/users/username/{username}")
-    UserProfileDTO getUserByUsername(@PathVariable String username);
-    
-    @PutMapping("/users/{userId}")
-    UserProfileDTO updateUser(@PathVariable Long userId, @RequestBody UserProfileDTO dto);
-}
-```
-## UserProfileController.java (user-service - UPDATED)
-```java
-package com.oerms.user.controller;
-
-import com.oerms.common.dto.ApiResponse;
-import com.oerms.user.dto.UserProfileDTO;
-import com.oerms.user.service.UserProfileService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/users")
-@RequiredArgsConstructor
-public class UserProfileController {
-
-    private final UserProfileService userProfileService;
-
-    @GetMapping("/profile/{userId}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<UserProfileDTO>> getUserProfile(@PathVariable Long userId) {
-        UserProfileDTO profile = userProfileService.getUserProfile(userId);
-        return ResponseEntity.ok(ApiResponse.success(profile));
-    }
-
-    @GetMapping("/profile/username/{username}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<UserProfileDTO>> getUserProfileByUsername(
-            @PathVariable String username) {
-        UserProfileDTO profile = userProfileService.getUserProfileByUsername(username);
-        return ResponseEntity.ok(ApiResponse.success(profile));
-    }
-
-    @PutMapping("/profile/{userId}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<UserProfileDTO>> updateUserProfile(
-            @PathVariable Long userId,
-            @RequestBody UserProfileDTO dto) {
-        UserProfileDTO profile = userProfileService.updateUserProfile(userId, dto);
-        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", profile));
-    }
-
-    @GetMapping("/admin/all")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<UserProfileDTO>>> getAllUsers() {
-        List<UserProfileDTO> users = userProfileService.getAllUsers();
-        return ResponseEntity.ok(ApiResponse.success(users));
-    }
-}
+CREATE INDEX idx_attempts_exam ON oerms_attempt.attempts(exam_id);
+CREATE INDEX idx_attempts_student ON oerms_attempt.attempts(student_id);
+CREATE INDEX idx_attempts_status ON oerms_attempt.attempts(status);
 ```

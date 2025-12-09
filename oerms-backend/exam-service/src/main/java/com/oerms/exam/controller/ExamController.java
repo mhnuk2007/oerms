@@ -1,43 +1,47 @@
 package com.oerms.exam.controller;
 
 import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.dto.CreateExamRequest;
+import com.oerms.common.dto.ExamDTO;
 import com.oerms.common.dto.PageResponse;
-import com.oerms.exam.dto.CreateExamRequest;
-import com.oerms.exam.dto.ExamDTO;
-import com.oerms.exam.dto.UpdateExamRequest;
+import com.oerms.common.dto.UpdateExamRequest;
+import com.oerms.exam.dto.ExamStatisticsDTO;
+import com.oerms.exam.dto.ExamWithQuestionsDTO;
 import com.oerms.exam.service.ExamService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/exams")
 @RequiredArgsConstructor
+@Tag(name = "Exam Management", description = "APIs for managing exams")
 public class ExamController {
 
     private final ExamService examService;
 
+    // ==================== CRUD Operations ====================
+
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Create a new exam", description = "Creates a new exam in DRAFT status")
     public ResponseEntity<ApiResponse<ExamDTO>> createExam(
             @Valid @RequestBody CreateExamRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
+            Authentication authentication) {
 
-        log.debug("User '{}' is creating an exam with data: {}", jwt.getSubject(), request);
-        ExamDTO exam = examService.createExam(request);
-        log.info("Exam '{}' created successfully by user '{}'", exam.getTitle(), jwt.getSubject());
-
+        ExamDTO exam = examService.createExam(request, authentication);
         return new ResponseEntity<>(
                 ApiResponse.success("Exam created successfully", exam),
                 HttpStatus.CREATED
@@ -45,89 +49,159 @@ public class ExamController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<ExamDTO>> getExam(@PathVariable Long id,
-                                                        @AuthenticationPrincipal Jwt jwt) {
-        log.debug("User '{}' is fetching exam with ID: {}", jwt.getSubject(), id);
+    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
+    @Operation(summary = "Get exam by ID", description = "Retrieves a single exam by its ID")
+    public ResponseEntity<ApiResponse<ExamDTO>> getExam(
+            @Parameter(description = "Exam ID") @PathVariable UUID id) {
         ExamDTO exam = examService.getExam(id);
-        log.info("Exam fetched successfully: ID {}", id);
-        return ResponseEntity.ok(ApiResponse.success(exam));
+        return ResponseEntity.ok(ApiResponse.success("Exam retrieved successfully", exam));
+    }
+
+    @GetMapping("/{id}/with-questions")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get exam with questions", description = "Retrieves an exam with all its questions and statistics")
+    public ResponseEntity<ApiResponse<ExamWithQuestionsDTO>> getExamWithQuestions(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            Authentication authentication) {
+        
+        ExamWithQuestionsDTO examWithQuestions = examService.getExamWithQuestions(id, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Exam with questions retrieved successfully", examWithQuestions));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Update exam", description = "Updates an existing exam (only DRAFT exams can be updated)")
     public ResponseEntity<ApiResponse<ExamDTO>> updateExam(
-            @PathVariable Long id,
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
             @Valid @RequestBody UpdateExamRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
+            Authentication authentication) {
 
-        log.debug("User '{}' is updating Exam ID {} with data: {}", jwt.getSubject(), id, request);
-        ExamDTO exam = examService.updateExam(id, request);
-        log.info("Exam ID {} updated successfully by user '{}'", id, jwt.getSubject());
-
+        ExamDTO exam = examService.updateExam(id, request, authentication);
         return ResponseEntity.ok(ApiResponse.success("Exam updated successfully", exam));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteExam(@PathVariable Long id,
-                                                        @AuthenticationPrincipal Jwt jwt) {
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Delete exam", description = "Deletes an exam (only DRAFT exams can be deleted)")
+    public ResponseEntity<ApiResponse<Void>> deleteExam(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            Authentication authentication) {
 
-        log.debug("User '{}' is deleting Exam ID {}", jwt.getSubject(), id);
-        examService.deleteExam(id);
-        log.info("Exam ID {} deleted successfully by user '{}'", id, jwt.getSubject());
-
+        examService.deleteExam(id, authentication);
         return ResponseEntity.ok(ApiResponse.success("Exam deleted successfully", null));
     }
 
+    // ==================== Exam Status Management ====================
+
     @PostMapping("/{id}/publish")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<ExamDTO>> publishExam(@PathVariable Long id,
-                                                            @AuthenticationPrincipal Jwt jwt) {
+    @Operation(summary = "Publish exam", description = "Publishes an exam (makes it available to students)")
+    public ResponseEntity<ApiResponse<ExamDTO>> publishExam(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            Authentication authentication) {
 
-        log.debug("User '{}' is publishing Exam ID {}", jwt.getSubject(), id);
-        ExamDTO exam = examService.publishExam(id);
-        log.info("Exam ID {} published successfully by user '{}'", id, jwt.getSubject());
-
+        ExamDTO exam = examService.publishExam(id, authentication);
         return ResponseEntity.ok(ApiResponse.success("Exam published successfully", exam));
     }
 
     @PostMapping("/{id}/unpublish")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<ExamDTO>> unpublishExam(@PathVariable Long id,
-                                                              @AuthenticationPrincipal Jwt jwt) {
+    @Operation(summary = "Unpublish exam", description = "Unpublishes an exam (returns it to DRAFT status)")
+    public ResponseEntity<ApiResponse<ExamDTO>> unpublishExam(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            Authentication authentication) {
 
-        log.debug("User '{}' is unpublishing Exam ID {}", jwt.getSubject(), id);
-        ExamDTO exam = examService.unpublishExam(id);
-        log.info("Exam ID {} unpublished successfully by user '{}'", id, jwt.getSubject());
-
+        ExamDTO exam = examService.unpublishExam(id, authentication);
         return ResponseEntity.ok(ApiResponse.success("Exam unpublished successfully", exam));
     }
 
     @PostMapping("/{id}/archive")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<ExamDTO>> archiveExam(@PathVariable Long id,
-                                                            @AuthenticationPrincipal Jwt jwt) {
+    @Operation(summary = "Archive exam", description = "Archives an exam (marks it as inactive)")
+    public ResponseEntity<ApiResponse<ExamDTO>> archiveExam(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            Authentication authentication) {
 
-        log.debug("User '{}' is archiving Exam ID {}", jwt.getSubject(), id);
-        ExamDTO exam = examService.archiveExam(id);
-        log.info("Exam ID {} archived successfully by user '{}'", id, jwt.getSubject());
-
+        ExamDTO exam = examService.archiveExam(id, authentication);
         return ResponseEntity.ok(ApiResponse.success("Exam archived successfully", exam));
+    }
+
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Cancel exam", description = "Cancels a published exam with a reason")
+    public ResponseEntity<ApiResponse<ExamDTO>> cancelExam(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            @Parameter(description = "Cancellation reason") @RequestParam(required = false) String reason,
+            Authentication authentication) {
+
+        ExamDTO exam = examService.cancelExam(id, reason, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Exam cancelled successfully", exam));
+    }
+
+    @GetMapping("/{id}/validate-publish")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Validate exam for publishing", description = "Checks if an exam is ready to be published")
+    public ResponseEntity<ApiResponse<Boolean>> validateExamForPublish(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            Authentication authentication) {
+        
+        Boolean isValid = examService.validateExamForPublish(id, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Exam validation completed", isValid));
+    }
+
+    // ==================== Student Exam Operations ====================
+
+//    @PostMapping("/{id}/start")
+//    @PreAuthorize("hasRole('STUDENT')")
+//    @Operation(summary = "Start exam", description = "Student starts taking an exam")
+//    public ResponseEntity<ApiResponse<ExamDTO>> startExam(
+//            @Parameter(description = "Exam ID") @PathVariable UUID id,
+//            Authentication authentication) {
+//
+//        ExamDTO exam = examService.startExam(id, authentication);
+//        return ResponseEntity.ok(ApiResponse.success("Exam started successfully", exam));
+//    }
+//
+//    @PostMapping("/{id}/complete")
+//    @PreAuthorize("hasRole('STUDENT')")
+//    @Operation(summary = "Complete exam", description = "Student completes an exam")
+//    public ResponseEntity<ApiResponse<Void>> completeExam(
+//            @Parameter(description = "Exam ID") @PathVariable UUID id,
+//            Authentication authentication) {
+//
+//        examService.completeExam(id, authentication);
+//        return ResponseEntity.ok(ApiResponse.success("Exam completed successfully", null));
+//    }
+
+    // ==================== Query Operations ====================
+
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get all exams (Admin)", description = "Retrieves all exams in the system (admin only)")
+    public ResponseEntity<ApiResponse<PageResponse<ExamDTO>>> getAllExams(
+            @Parameter(description = "Page number") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort by field") @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Sort direction") @RequestParam(defaultValue = "DESC") String sortDir,
+            Authentication authentication) {
+
+        Sort sort = sortDir.equalsIgnoreCase("ASC")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        PageResponse<ExamDTO> exams = examService.getAllExams(authentication, PageRequest.of(page, size, sort));
+        return ResponseEntity.ok(ApiResponse.success("All exams retrieved successfully", exams));
     }
 
     @GetMapping("/teacher/{teacherId}")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get teacher's exams", description = "Retrieves all exams created by a specific teacher")
     public ResponseEntity<ApiResponse<PageResponse<ExamDTO>>> getTeacherExams(
-            @PathVariable Long teacherId,
+            @Parameter(description = "Teacher ID") @PathVariable UUID teacherId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir,
-            @AuthenticationPrincipal Jwt jwt) {
-
-        log.debug("User '{}' is fetching exams for Teacher ID {} | page={}, size={}, sortBy={}, sortDir={}",
-                jwt.getSubject(), teacherId, page, size, sortBy, sortDir);
+            @RequestParam(defaultValue = "DESC") String sortDir) {
 
         Sort sort = sortDir.equalsIgnoreCase("ASC")
                 ? Sort.by(sortBy).ascending()
@@ -135,65 +209,101 @@ public class ExamController {
 
         PageResponse<ExamDTO> exams = examService.getTeacherExams(
                 teacherId, PageRequest.of(page, size, sort));
-
-        log.info("Fetched {} exams for Teacher ID {}", exams.getContent().size(), teacherId);
-        return ResponseEntity.ok(ApiResponse.success(exams));
+        return ResponseEntity.ok(ApiResponse.success("Exams retrieved successfully", exams));
     }
 
     @GetMapping("/published")
+    @Operation(summary = "Get published exams", description = "Retrieves all published and active exams")
     public ResponseEntity<ApiResponse<PageResponse<ExamDTO>>> getPublishedExams(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir,
-            @AuthenticationPrincipal Jwt jwt) {
-
-        log.debug("User '{}' is fetching published exams | page={}, size={}, sortBy={}, sortDir={}",
-                jwt == null ? "anonymous" : jwt.getSubject(), page, size, sortBy, sortDir);
+            @RequestParam(defaultValue = "DESC") String sortDir) {
 
         Sort sort = sortDir.equalsIgnoreCase("ASC")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
 
-        PageResponse<ExamDTO> exams = examService.getPublishedExams(
-                PageRequest.of(page, size, sort));
-
-        log.info("Fetched {} published exams", exams.getContent().size());
-        return ResponseEntity.ok(ApiResponse.success(exams));
+        PageResponse<ExamDTO> exams = examService.getPublishedExams(PageRequest.of(page, size, sort));
+        return ResponseEntity.ok(ApiResponse.success("Published exams retrieved successfully", exams));
     }
 
     @GetMapping("/active")
-    public ResponseEntity<ApiResponse<List<ExamDTO>>> getActiveExams(@AuthenticationPrincipal Jwt jwt) {
-        log.debug("User '{}' is fetching active exams", jwt == null ? "anonymous" : jwt.getSubject());
+    @Operation(summary = "Get active exams", description = "Retrieves all currently active exams")
+    public ResponseEntity<ApiResponse<List<ExamDTO>>> getActiveExams() {
         List<ExamDTO> exams = examService.getActiveExams();
-        log.info("Fetched {} active exams", exams.size());
-        return ResponseEntity.ok(ApiResponse.success(exams));
+        return ResponseEntity.ok(ApiResponse.success("Active exams retrieved successfully", exams));
     }
 
     @GetMapping("/ongoing")
-    public ResponseEntity<ApiResponse<List<ExamDTO>>> getOngoingExams(@AuthenticationPrincipal Jwt jwt) {
-        log.debug("User '{}' is fetching ongoing exams", jwt == null ? "anonymous" : jwt.getSubject());
+    @Operation(summary = "Get ongoing exams", description = "Retrieves exams that are currently in progress")
+    public ResponseEntity<ApiResponse<List<ExamDTO>>> getOngoingExams() {
         List<ExamDTO> exams = examService.getOngoingExams();
-        log.info("Fetched {} ongoing exams", exams.size());
-        return ResponseEntity.ok(ApiResponse.success(exams));
+        return ResponseEntity.ok(ApiResponse.success("Ongoing exams retrieved successfully", exams));
     }
+
+    // ==================== Statistics & Counts ====================
 
     @GetMapping("/teacher/{teacherId}/count")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<Long>> getTeacherExamCount(@PathVariable Long teacherId,
-                                                                 @AuthenticationPrincipal Jwt jwt) {
-
-        log.debug("User '{}' is fetching exam count for Teacher ID {}", jwt.getSubject(), teacherId);
+    @Operation(summary = "Get teacher's exam count", description = "Returns the total number of exams created by a teacher")
+    public ResponseEntity<ApiResponse<Long>> getTeacherExamCount(
+            @Parameter(description = "Exam ID") @PathVariable UUID teacherId) {
         Long count = examService.getTeacherExamCount(teacherId);
-        log.info("Teacher ID {} has {} exams", teacherId, count);
-        return ResponseEntity.ok(ApiResponse.success(count));
+        return ResponseEntity.ok(ApiResponse.success("Exam count retrieved successfully", count));
     }
 
     @GetMapping("/published/count")
-    public ResponseEntity<ApiResponse<Long>> getPublishedExamCount(@AuthenticationPrincipal Jwt jwt) {
-        log.debug("User '{}' is fetching published exam count", jwt == null ? "anonymous" : jwt.getSubject());
+    @Operation(summary = "Get published exam count", description = "Returns the total number of published exams")
+    public ResponseEntity<ApiResponse<Long>> getPublishedExamCount() {
         Long count = examService.getPublishedExamCount();
-        log.info("Published exams count: {}", count);
-        return ResponseEntity.ok(ApiResponse.success(count));
+        return ResponseEntity.ok(ApiResponse.success("Published exam count retrieved successfully", count));
+    }
+
+    @GetMapping("/{id}/questions/count")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get question count for exam", description = "Returns the number of questions in an exam")
+    public ResponseEntity<ApiResponse<Long>> getExamQuestionCount(
+            @Parameter(description = "Exam ID") @PathVariable UUID id) {
+        Long count = examService.getExamQuestionCount(id);
+        return ResponseEntity.ok(ApiResponse.success("Question count retrieved successfully", count));
+    }
+
+    @GetMapping("/{id}/statistics")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get exam statistics", description = "Returns detailed statistics about an exam including question breakdown")
+    public ResponseEntity<ApiResponse<ExamStatisticsDTO>> getExamStatistics(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            Authentication authentication) {
+        ExamStatisticsDTO statistics = examService.getExamStatistics(id, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Exam statistics retrieved successfully", statistics));
+    }
+
+    // ==================== Current User Operations ====================
+
+    @GetMapping("/my-exams")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get current user's exams", description = "Retrieves all exams created by the current user")
+    public ResponseEntity<ApiResponse<PageResponse<ExamDTO>>> getMyExams(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir,
+            Authentication authentication) {
+
+        Sort sort = sortDir.equalsIgnoreCase("ASC")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        PageResponse<ExamDTO> exams = examService.getMyExams(authentication, PageRequest.of(page, size, sort));
+        return ResponseEntity.ok(ApiResponse.success("Your exams retrieved successfully", exams));
+    }
+
+    @GetMapping("/my-exams/count")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get current user's exam count", description = "Returns the number of exams created by the current user")
+    public ResponseEntity<ApiResponse<Long>> getMyExamCount(Authentication authentication) {
+        Long count = examService.getMyExamCount(authentication);
+        return ResponseEntity.ok(ApiResponse.success("Your exam count retrieved successfully", count));
     }
 }

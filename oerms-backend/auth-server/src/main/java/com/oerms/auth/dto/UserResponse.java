@@ -1,32 +1,33 @@
 package com.oerms.auth.dto;
 
+import com.oerms.common.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserResponse {
-private Long id;
-private String username;
-private String email;
-private String firstName;
-private String lastName;
-private String phone;
-private String bio;
-private String profileImageUrl;
-private LocalDateTime dateOfBirth;
-private String address;
-private String city;
-private String state;
-private String country;
-private Set<String> roles;
-private Boolean enabled;
-private LocalDateTime createdAt;
-private LocalDateTime updatedAt;
+
+    private UUID id;
+    private String userName;
+    private String email;
+    private Boolean enabled;
+    private Boolean accountNonExpired;
+    private Boolean accountNonLocked;
+    private Boolean credentialsNonExpired;
+    private Set<Role> roles;
+    private LocalDateTime lastLogin;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String createdBy;       // inherited from BaseEntity
+    private String lastModifiedBy;  // inherited from BaseEntity
+    private Long version;           // inherited from BaseEntity
 }

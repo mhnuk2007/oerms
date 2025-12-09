@@ -6,44 +6,101 @@ spring:
     url: jdbc:postgresql://localhost:5432/oerms_exam
     username: postgres
     password: "0000"
-    # driver-class-name: org.postgresql.Driver # <-- This is no longer needed; Spring Boot auto-detects from the URL.
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
-      idle-timeout: 600000 # 10 minutes
-      max-lifetime: 1800000 # 30 minutes
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   jpa:
     hibernate:
       ddl-auto: update
-      show-sql: false
-      properties:
-        hibernate:
-          dialect: org.hibernate.dialect.PostgreSQLDialect
-          format_sql: true
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
 
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: 6379
       timeout: 60000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000 # 1 hour
+      cache-null-values: false
+      key-prefix: "exam-service:"
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
       properties:
         spring.json.add.type.headers: false
+        max.in.flight.requests.per.connection: 1
+        compression.type: snappy
+        linger.ms: 10
+        batch.size: 16384
+
+    consumer:
+      group-id: exam-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.json.trusted.packages: "com.oerms.exam.event,com.oerms.common.event"
+        spring.json.use.type.headers: false
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+
+    listener:
+      ack-mode: manual_immediate
+      concurrency: 3
 
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:9000
+          issuer-uri: http://localhost:8080
 
-# SpringDoc OpenAPI
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 10000
+            loggerLevel: full
+      circuitbreaker:
+        enabled: true
+        alphanumeric-ids:
+          enabled: true
+
+  task:
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: exam-scheduler-
+
+# Swagger/OpenAPI
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -52,36 +109,150 @@ springdoc:
     path: /swagger-ui.html
     enabled: true
     operationsSorter: method
+    tagsSorter: alpha
+    display-request-duration: true
+    doc-expansion: none
 
 server:
   port: 9002
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
 
 eureka:
   client:
     service-url:
       defaultZone: http://eureka:eureka123@localhost:8761/eureka/
+    registry-fetch-interval-seconds: 30
+    healthcheck:
+      enabled: true
   instance:
-    prefer-ip-address: true
-    lease-renewal-interval-in-seconds: 30
+    # CRITICAL: Use localhost for local development
+    hostname: localhost
+    # Use IP address instead of hostname
+    prefer-ip-address: false
+    # Use localhost in instance ID
+    instance-id: ${spring.application.name}:${server.port}
+    # Health check configuration
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+    # Explicitly set the home page URL
+    home-page-url: http://localhost:${server.port}/
+    status-page-url: http://localhost:${server.port}/actuator/info
+    health-check-url: http://localhost:${server.port}/actuator/health
+    metadata-map:
+      management:
+        context-path: /actuator
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus,caches
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
+    kafka:
+      enabled: true
 
+# Application specific properties
+exam:
+  scheduler:
+    auto-complete:
+      enabled: true
+      fixed-rate: 300000 # 5 minutes
+    reminder:
+      enabled: true
+      fixed-rate: 3600000 # 1 hour
+      hours-before: 24
+    auto-start:
+      enabled: true
+      fixed-rate: 60000 # 1 minute
+    archive:
+      enabled: true
+      cron: "0 0 2 * * *" # Daily at 2 AM
+      days-threshold: 90
+    cleanup:
+      enabled: true
+      cron: "0 0 3 * * *" # Daily at 3 AM
+      days-threshold: 30
+
+# ============================================================================
+# LOGGING CONFIGURATION - OPTIMIZED FOR DEBUGGING
+# ============================================================================
 logging:
   level:
-    com.oerms.exam: DEBUG
-    org.springframework.security: INFO
-    org.springframework.kafka: INFO
+    # Root level - keep at INFO to avoid noise
+    root: INFO
 
-feign:
-  client:
-    config:
-      default:
-        connectTimeout: 5000
-        readTimeout: 5000
+    # === YOUR APPLICATION LOGS ===
+    com.oerms.exam: DEBUG
+
+    # === HTTP REQUEST/RESPONSE LOGGING ===
+    org.springframework.web: DEBUG
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: DEBUG
+    org.springframework.web.servlet.DispatcherServlet: DEBUG
+
+    # === SECURITY & JWT LOGGING ===
+    org.springframework.security: DEBUG
+    org.springframework.security.web: DEBUG
+    org.springframework.security.oauth2: DEBUG
+
+    # === CACHE LOGGING ===
+    org.springframework.cache: DEBUG
+
+    # === FEIGN CLIENT LOGGING (if using) ===
+    feign: DEBUG
+
+    # === DATABASE - Only when needed ===
+    # org.hibernate.SQL: DEBUG
+    # org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+    # === SILENCE NOISY LOGGERS ===
+    # Eureka resolver messages
+    com.netflix.discovery: WARN
+    com.netflix.discovery.shared.resolver.aws.ConfigClusterResolver: ERROR
+
+    # Redis connection pool
+    org.springframework.data.redis: INFO
+    io.lettuce.core: WARN
+
+    # Kafka
+    org.springframework.kafka: WARN
+    org.apache.kafka: WARN
+
+    # Hikari connection pool
+    com.zaxxer.hikari: WARN
+
+    # Spring Cloud
+    org.springframework.cloud: WARN
+
+    # HTTP client
+    org.apache.http: WARN
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+  file:
+    name: logs/exam-service.log
+
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 1GB

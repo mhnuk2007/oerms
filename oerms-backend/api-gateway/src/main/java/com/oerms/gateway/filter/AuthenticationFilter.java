@@ -16,28 +16,35 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @Component
 public class AuthenticationFilter implements GlobalFilter, Ordered {
-    
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        log.debug("Authorization header: {}", authHeader != null ? "Present" : "Missing");
+
         return ReactiveSecurityContextHolder.getContext()
-            .map(SecurityContext::getAuthentication)
-            .filter(Authentication::isAuthenticated)
-            .map(authentication -> {
-                ServerHttpRequest request = exchange.getRequest().mutate()
-                    .header("X-User-Id", authentication.getName())
-                    .header("X-User-Roles", 
-                        authentication.getAuthorities().stream()
-                            .map(Object::toString)
-                            .reduce((a, b) -> a + "," + b)
-                            .orElse(""))
-                    .build();
-                
-                return exchange.mutate().request(request).build();
-            })
-            .defaultIfEmpty(exchange)
-            .flatMap(chain::filter);
+                .map(SecurityContext::getAuthentication)
+                .filter(Authentication::isAuthenticated)
+                .map(authentication -> {
+                    log.debug("Authenticated user: {}, authorities: {}",
+                            authentication.getName(),
+                            authentication.getAuthorities());
+
+                    ServerHttpRequest request = exchange.getRequest().mutate()
+                            .header("X-User-Id", authentication.getName())
+                            .header("X-User-Roles",
+                                    authentication.getAuthorities().stream()
+                                            .map(Object::toString)
+                                            .reduce((a, b) -> a + "," + b)
+                                            .orElse(""))
+                            .build();
+
+                    return exchange.mutate().request(request).build();
+                })
+                .defaultIfEmpty(exchange)
+                .flatMap(chain::filter);
     }
-    
+
     @Override
     public int getOrder() {
         return -100;

@@ -1,49 +1,68 @@
 spring:
   application:
     name: user-service
+
   datasource:
     url: jdbc:postgresql://localhost:5432/oerms_user
     username: postgres
     password: "0000"
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
+      ddl-auto: update
       show-sql: false
       properties:
         hibernate:
           dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
   data:
     redis:
       host: localhost
       port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000
+      cache-null-values: false
+
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: user-service
+      group-id: user-service-group
       auto-offset-reset: earliest
-      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
-        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
-        spring.json.value.default.type: com.oerms.common.event.UserEvent
-        spring.json.trusted.packages: "*"
+        spring.json.trusted.packages: com.oerms.common.event
+    listener:
+      ack-mode: manual
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:9000
-
-# SpringDoc OpenAPI Configuration
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-    enabled: true
-  swagger-ui:
-    path: /swagger-ui.html
-    enabled: true
-    operationsSorter: method
-
+          issuer-uri: http://localhost:8080
 
 server:
   port: 9001
@@ -51,23 +70,52 @@ server:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka:eureka123@localhost:8761/eureka/
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
   instance:
-    prefer-ip-address: true
-
-feign:
-  client:
-    config:
-      default:
-        connectTimeout: 5000
-        readTimeout: 5000
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
+    # CRITICAL: Use localhost for local development
+    hostname: localhost
+    # Use IP address instead of hostname
+    prefer-ip-address: false
+    # Use localhost in instance ID
+    instance-id: ${spring.application.name}:${server.port}
+    # Health check configuration
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+    # Explicitly set the home page URL
+    home-page-url: http://localhost:${server.port}/
+    status-page-url: http://localhost:${server.port}/actuator/info
+    health-check-url: http://localhost:${server.port}/actuator/health
 
 logging:
   level:
-    com.oerms.user: DEBUG
+    root: INFO
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.web.client: DEBUG
+    com.oerms.user: INFO
+
+
+app:
+  minio:
+    url: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket-name: oerms-profiles
+    enabled: false
+
+  file:
+    upload-dir: ./uploads/profiles
+    max-size: 10485760
+    allowed-extensions: jpg,jpeg,png,gif
+    base-url: http://localhost:8080
+
+  cache:
+    user-profile-ttl: 3600
+  kafka:
+    topics:
+      user-registered: user-registered-events
+      user-profile-created: user-profile-created-events
+      user-profile-updated: user-profile-updated-events
+

@@ -7,22 +7,25 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.oerms.auth.repository.UserRepository;
-import com.oerms.auth.service.UserDetailsServiceImpl;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
@@ -36,6 +39,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.web.filter.ForwardedHeaderFilter;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -43,9 +47,25 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    @Value("${app.gateway-url}")
+    private String gatewayUrl;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    private final UserRepository userRepository;
+
+    // Enable forwarded headers for gateway support
+    @Bean
+    public ForwardedHeaderFilter forwardedHeaderFilter() {
+        return new ForwardedHeaderFilter();
+    }
 
     // Chain for Authorization Server endpoints
     @Bean
@@ -56,43 +76,66 @@ public class SecurityConfig {
         http
                 .securityMatcher(authz.getEndpointsMatcher())
                 .with(authz, server -> server.oidc(Customizer.withDefaults())) // enable OIDC
+                // Disable CORS - Gateway handles it
+                .cors(cors -> cors.disable())
                 .csrf(csrf -> csrf.ignoringRequestMatchers(authz.getEndpointsMatcher()))
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .exceptionHandling(ex -> ex
+                .exceptionHandling(exceptions -> exceptions
                         .defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
-                );
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
 
         return http.build();
     }
 
-    // Default chain for everything else (e.g., login page, actuator)
     @Bean
     @Order(2)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // keep simple for dev; harden later
-                .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
+                // Disable CORS - Gateway handles it
+                .cors(cors -> cors.disable())
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Static resources & favicon
                         .requestMatchers(
-                                // Public endpoints
-                                "/auth/register",
+                                "/favicon.ico",
+                                "/robots.txt",
+                                "/static/**",
+                                "/*.ico",
+                                "/*.png",
+                                "/*.jpg",
+                                "/*.css",
+                                "/*.js"
+                        ).permitAll()
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/authenticate",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
+                                "/api/auth/health",
+                                "/login", // Allow access to the login page
                                 "/actuator/**",
                                 "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/swagger-resources/**",
-                                "/webjars/**",
-                                // Documentation endpoints
-                                "/api/auth/**"
-
+                                "/swagger-ui/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                .formLogin(Customizer.withDefaults());
-
+                .formLogin(form -> form
+                        .loginPage("/login") // Specify the custom login page
+                        .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            response.sendRedirect(frontendUrl + "/login?logged_out=true");
+                        })
+                ).oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/oauth2/**", "/api/auth/**")
+                        .disable()
+                );
         return http.build();
     }
 
@@ -106,16 +149,18 @@ public class SecurityConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://127.0.0.1:8080/login/oauth2/code/oerms-web-client")
-                .redirectUri("http://localhost:3000/auth/callback") // React/Next.js callback
-                .postLogoutRedirectUri("http://127.0.0.1:8080/")
-                .postLogoutRedirectUri("http://localhost:3000/")
+                .redirectUri(gatewayUrl + "/login/oauth2/code/oerms-web-client")
+                .redirectUri(frontendUrl + "/auth/callback")
+                .postLogoutRedirectUri(gatewayUrl + "/")
+                .postLogoutRedirectUri(frontendUrl + "/")
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
                 .scope(OidcScopes.EMAIL)
+                .scope("read")
+                .scope("write")
                 .clientSettings(ClientSettings.builder()
                         .requireAuthorizationConsent(false)
-                        .requireProofKey(false)
+                        .requireProofKey(true)
                         .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofHours(1))
@@ -123,7 +168,34 @@ public class SecurityConfig {
                         .reuseRefreshTokens(false)
                         .build())
                 .build();
-        // Machine-to-Machine Client → Client Credentials Flow
+
+        RegisteredClient nextJsClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("oerms-nextjs-client")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri(frontendUrl + "/auth/callback")
+                .redirectUri(frontendUrl + "/api/auth/callback")
+                .redirectUri(frontendUrl + "/api/auth/callback/oauth2")
+                .postLogoutRedirectUri(frontendUrl + "/")
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .scope(OidcScopes.EMAIL)
+                .scope("offline_access")
+                .scope("read")
+                .scope("write")
+                .clientSettings(ClientSettings.builder()
+                        .requireProofKey(true)
+                        .requireAuthorizationConsent(false)
+                        .build())
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofHours(1))
+                        .refreshTokenTimeToLive(Duration.ofDays(1))
+                        .reuseRefreshTokens(false)
+                        .build())
+                .build();
+
+        // Machine-to-Machine Client
         RegisteredClient m2mClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("oerms-m2m")
                 .clientSecret(encoder.encode("supersecret"))
@@ -136,26 +208,7 @@ public class SecurityConfig {
                         .build())
                 .build();
 
-        // Service Account Client → Password Grant (for testing/development)
-        RegisteredClient serviceClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("oerms-service")
-                .clientSecret(encoder.encode("service-secret"))
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
-                .authorizationGrantType(AuthorizationGrantType.PASSWORD)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .scope(OidcScopes.OPENID)
-                .scope(OidcScopes.PROFILE)
-                .scope(OidcScopes.EMAIL)
-                .scope("read")
-                .scope("write")
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(1))
-                        .refreshTokenTimeToLive(Duration.ofDays(7))
-                        .build())
-                .build();
-
-        return new InMemoryRegisteredClientRepository(webClient, m2mClient, serviceClient);
+        return new InMemoryRegisteredClientRepository(webClient, nextJsClient, m2mClient);
     }
 
     @Bean
@@ -184,31 +237,28 @@ public class SecurityConfig {
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer(UserRepository repo) {
         return context -> {
-            if (context.getPrincipal() != null) {
-                String email = context.getPrincipal().getName();
-                repo.findByEmail(email).ifPresent(user -> {
-                    // Add custom claims
-                    context.getClaims().claim("userId", user.getId());
-                    context.getClaims().claim("email", user.getEmail());
-                    context.getClaims().claim("username", user.getUsername());
-                    context.getClaims().claim("roles", user.getRoles());
-                    context.getClaims().claim("authorities", user.getRoles());
+            if (context.getTokenType().getValue().equals("access_token")) {
+                if (context.getPrincipal() != null) {
+                    String principalName = context.getPrincipal().getName();
 
-                    // Map roles to scopes for fine-grained access control
-                    context.getClaims().claim("scope", user.getRoles().stream()
-                            .map(role -> {
-                                if ("ROLE_STUDENT".equals(role)) return "read";
-                                if ("ROLE_TEACHER".equals(role)) return "write";
-                                if ("ROLE_ADMIN".equals(role)) return "admin";
-                                return role;
-                            })
-                            .toList());
-                });
+                    repo.findByEmail(principalName)
+                            .or(() -> repo.findByUserName(principalName))
+                            .ifPresent(user -> {
+                                context.getClaims()
+                                        .claim("userId", user.getId())
+                                        .claim("email", user.getEmail())
+                                        .claim("username", user.getUserName())
+                                        .claim("roles", user.getRoles().stream()
+                                                .map(role -> "ROLE_" + role.name())
+                                                .collect(Collectors.toList()))
+                                        .claim("authorities", user.getRoles().stream()
+                                                .map(Enum::name)
+                                                .collect(Collectors.toList()));
+                            });
+                }
             }
         };
     }
-
-
 
     @Bean
     public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
@@ -217,9 +267,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
-        return AuthorizationServerSettings.builder()
-                .issuer("http://localhost:9000")
-                .build();
+        return AuthorizationServerSettings.builder().build();
     }
 
     @Bean
@@ -227,19 +275,13 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-
     @Bean
-    public AuthenticationManager authenticationManager(
-            HttpSecurity http, UserRepository userRepository
-    ) throws Exception {
-
-        AuthenticationManagerBuilder authManagerBuilder =
-                http.getSharedObject(AuthenticationManagerBuilder.class);
-        authManagerBuilder
-                .userDetailsService(new UserDetailsServiceImpl(userRepository))
-                .passwordEncoder(passwordEncoder());
-        return authManagerBuilder.build();
+    public OAuth2AuthorizationService authorizationService() {
+        return new InMemoryOAuth2AuthorizationService();
     }
 
-
+    @Bean
+    public JwtEncoder jwtEncoder(JWKSource<SecurityContext> jwkSource) {
+        return new NimbusJwtEncoder(jwkSource);
+    }
 }

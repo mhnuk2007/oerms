@@ -1,0 +1,157 @@
+package com.oerms.attempt.entity;
+
+import com.oerms.common.entity.BaseEntity;
+import com.oerms.attempt.enums.AttemptStatus;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "exam_attempts", indexes = {
+    @Index(name = "idx_attempt_student_id", columnList = "student_id"),
+    @Index(name = "idx_attempt_exam_id", columnList = "exam_id"),
+    @Index(name = "idx_attempt_status", columnList = "status")
+})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ExamAttempt extends BaseEntity {
+    
+    @Column(name = "exam_id", nullable = false)
+    private UUID examId;
+    
+    @Column(name = "exam_title")
+    private String examTitle;
+    
+    @Column(name = "student_id", nullable = false)
+    private UUID studentId;
+    
+    @Column(name = "student_name")
+    private String studentName;
+    
+    @Column(name = "attempt_number", nullable = false)
+    private Integer attemptNumber;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private AttemptStatus status = AttemptStatus.IN_PROGRESS;
+    
+    @Column(name = "total_questions", nullable = false)
+    private Integer totalQuestions;
+    
+    @Column(name = "answered_questions")
+    @Builder.Default
+    private Integer answeredQuestions = 0;
+    
+    @Column(name = "flagged_questions")
+    @Builder.Default
+    private Integer flaggedQuestions = 0;
+    
+    @Column(name = "total_marks", nullable = false)
+    private Integer totalMarks;
+    
+    @Column(name = "obtained_marks")
+    private Double obtainedMarks;
+    
+    @Column(name = "percentage")
+    private Double percentage;
+    
+    @Column(name = "started_at", nullable = false)
+    private LocalDateTime startedAt;
+    
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
+    
+    @Column(name = "time_taken_seconds")
+    private Integer timeTakenSeconds;
+    
+    @Column(name = "remaining_time_seconds")
+    private Integer remainingTimeSeconds;
+    
+    @Column(name = "ip_address", length = 50)
+    private String ipAddress;
+    
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
+    
+    @Column(name = "browser_info", length = 200)
+    private String browserInfo;
+    
+    @Column(name = "tab_switches")
+    @Builder.Default
+    private Integer tabSwitches = 0;
+    
+    @Column(name = "webcam_violations")
+    @Builder.Default
+    private Integer webcamViolations = 0;
+    
+    @Column(name = "copy_paste_count")
+    @Builder.Default
+    private Integer copyPasteCount = 0;
+    
+    @Column(name = "auto_submitted")
+    @Builder.Default
+    private Boolean autoSubmitted = false;
+    
+    @Column(name = "reviewed")
+    @Builder.Default
+    private Boolean reviewed = false;
+    
+    @Column(name = "passed")
+    private Boolean passed;
+    
+    @Column(length = 1000)
+    private String notes;
+    
+    @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AttemptAnswer> answers = new ArrayList<>();
+    
+    // Helper methods
+    public void addAnswer(AttemptAnswer answer) {
+        answers.add(answer);
+        answer.setAttempt(this);
+    }
+    
+    public void incrementTabSwitches() {
+        this.tabSwitches++;
+    }
+    
+    public void incrementWebcamViolations() {
+        this.webcamViolations++;
+    }
+    
+    public void incrementCopyPaste() {
+        this.copyPasteCount++;
+    }
+    
+    public void updateAnsweredCount() {
+        this.answeredQuestions = (int) answers.stream()
+            .filter(a -> a.getAnswerText() != null || !a.getSelectedOptions().isEmpty())
+            .count();
+    }
+    
+    public void updateFlaggedCount() {
+        this.flaggedQuestions = (int) answers.stream()
+            .filter(AttemptAnswer::getFlagged)
+            .count();
+    }
+    
+    public Integer calculateTimeTaken() {
+        if (startedAt != null && submittedAt != null) {
+            return (int) java.time.Duration.between(startedAt, submittedAt).getSeconds();
+        }
+        return null;
+    }
+    
+    public boolean hasViolations() {
+        return tabSwitches > 0 || webcamViolations > 0 || copyPasteCount > 5;
+    }
+}

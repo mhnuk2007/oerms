@@ -1,65 +1,57 @@
 package com.oerms.user.entity;
 
+import com.oerms.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
-import java.util.Set;
+import lombok.*;
+
+import java.util.UUID;
 
 @Entity
-@Table(name = "user_profiles")
-@Data
-@Builder
+@Table(name = "user_profiles", indexes = {
+        @Index(name = "idx_user_id", columnList = "user_id"),
+        @Index(name = "idx_email", columnList = "email")
+})
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserProfile {
+@Builder
+public class UserProfile extends BaseEntity {
 
-    @Id
-    private Long id; // Same as auth-server user.id
-    
-    @Column(unique = true, nullable = false)
-    private String username;
-    
-    @Column(unique = true, nullable = false)
-    private String email;
-    
-    @Column(name = "first_name")
+    @Column(name = "user_id", nullable = false, unique = true)
+    private UUID userId; // From auth-server
+
+    @Column(name = "first_name", length = 100)
     private String firstName;
-    
-    @Column(name = "last_name")
+
+    @Column(name = "last_name", length = 100)
     private String lastName;
-    
-    private String phone;
-    
-    @Column(length = 1000)
-    private String bio;
-    
-    @Column(name = "profile_image_url")
-    private String profileImageUrl;
-    
-    @Column(name = "date_of_birth")
-    private LocalDateTime dateOfBirth;
-    
-    private String address;
+
+    @Column(name = "email", nullable = false, unique = true, length = 150)
+    private String email;
+
+    @Column(name = "city", length = 100)
     private String city;
-    private String state;
-    private String country;
-    
-    @ElementCollection
-    @CollectionTable(name = "user_profile_roles", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "role")
-    private Set<String> roles;
-    
-    private Boolean enabled;
-    
-    @Column(name = "synced_at")
-    private LocalDateTime syncedAt;
-    
-    @PrePersist
-    @PreUpdate
-    protected void onSync() {
-        syncedAt = LocalDateTime.now();
+
+    @Column(name = "institution", length = 200)
+    private String institution; // Single institution per user
+
+    @Column(name = "profile_picture_url", length = 500)
+    private String profilePictureUrl;
+
+    @Column(name = "profile_completed")
+    @Builder.Default
+    private Boolean profileCompleted = false;
+
+    @Column(name = "is_active")
+    @Builder.Default
+    private Boolean isActive = true;
+
+    // Helper method to check if profile is complete
+    public void checkProfileCompletion() {
+        this.profileCompleted = firstName != null && !firstName.isBlank() &&
+                lastName != null && !lastName.isBlank() &&
+                city != null && !city.isBlank() &&
+                institution != null && !institution.isBlank();
     }
 }

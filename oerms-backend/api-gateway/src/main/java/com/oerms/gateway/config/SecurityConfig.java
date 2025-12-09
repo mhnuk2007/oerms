@@ -1,7 +1,9 @@
 package com.oerms.gateway.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
@@ -16,26 +18,50 @@ import org.springframework.security.web.server.context.NoOpServerSecurityContext
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    private String issuerUri;
+
     @Bean
-    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http,
-                                                         ReactiveJwtDecoder jwtDecoder) {
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
 
         http
+                // CORS is handled by Spring Cloud Gateway global configuration in YAML
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
+
                 .authorizeExchange(exchanges -> exchanges
 
-                        // Public routes
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Static resources & favicon
+                        .pathMatchers(
+                                "/favicon.ico",
+                                "/robots.txt",
+                                "/static/**",
+                                "/*.ico",
+                                "/*.png",
+                                "/*.jpg",
+                                "/*.css",
+                                "/*.js"
+                        ).permitAll()
+
+                        // Actuator & monitoring
                         .pathMatchers(
                                 "/actuator/health",
                                 "/actuator/info",
+                                "/actuator/prometheus",
+                                "/actuator/gateway/**"
+                        ).permitAll()
+
+                        // Swagger / API Docs
+                        .pathMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/webjars/**",
                                 "/fallback/**",
+                                "/files/**",
 
-                                // OpenAPI docs for microservices
                                 "/auth-server/v3/api-docs/**",
                                 "/exam-service/v3/api-docs/**",
                                 "/question-service/v3/api-docs/**",
@@ -45,16 +71,23 @@ public class SecurityConfig {
                                 "/notification-service/v3/api-docs/**"
                         ).permitAll()
 
-                        .pathMatchers("/oauth2/**", "/login/**", "/logout/**").permitAll()
-                        .pathMatchers("/api/users/register").permitAll()
+                        // OIDC + Authorization Server endpoints
+                        .pathMatchers(
+                                "/oauth2/**",
+                                "/login/**",
+                                "/logout/**",
+                                "/api/auth/register",
+                                "/oauth2/jwks",
+                                "/.well-known/openid-configuration",
+                                "/.well-known/oauth-authorization-server"
+                        ).permitAll()
 
+                        // Everything else
                         .anyExchange().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt
-                                .jwtAuthenticationConverter(jwtAuthenticationConverter())
-                                .jwtDecoder(jwtDecoder)      // <-- FIXED
-                        )
+
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 );
 
         return http.build();
@@ -62,9 +95,7 @@ public class SecurityConfig {
 
     @Bean
     public ReactiveJwtDecoder jwtDecoder() {
-        return NimbusReactiveJwtDecoder
-                .withJwkSetUri("http://localhost:9000/oauth2/jwks")
-                .build();
+        return NimbusReactiveJwtDecoder.withIssuerLocation(issuerUri).build();
     }
 
     @Bean

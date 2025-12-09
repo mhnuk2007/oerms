@@ -1,42 +1,33 @@
 package com.oerms.auth.config;
 
-import com.oerms.common.event.UserEvent;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.support.serializer.JsonSerializer;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.springframework.kafka.config.TopicBuilder;
 
 @Configuration
 public class KafkaConfig {
 
-    @Value("${spring.kafka.bootstrap-servers}")
-    private String bootstrapServers;
+    @Value("${app.kafka.topics.user-registered}")
+    private String userRegisteredTopic;
+
+    @Value("${app.kafka.topics.user-profile-created}")
+    private String userProfileCreatedTopic;
 
     @Bean
-    public ProducerFactory<String, UserEvent> userEventProducerFactory() {
-        Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        return new DefaultKafkaProducerFactory<>(configProps);
+    public NewTopic userRegisteredTopic() {
+        return TopicBuilder.name(userRegisteredTopic)
+                .partitions(3)
+                .replicas(1)
+                .build();
     }
 
     @Bean
-    public KafkaTemplate<String, UserEvent> userEventKafkaTemplate() {
-        return new KafkaTemplate<>(userEventProducerFactory());
-    }
-
-    @Bean
-    public NewTopic userEventsTopic() {
-        return new NewTopic("user-events", 3, (short) 1);
+    public NewTopic userProfileCreatedTopic() {
+        return TopicBuilder.name(userProfileCreatedTopic)
+                .partitions(3)
+                .replicas(1)
+                .build();
     }
 }

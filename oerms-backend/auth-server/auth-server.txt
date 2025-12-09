@@ -1,0 +1,2111 @@
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/pom.xml
+# ============================================
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.oerms</groupId>
+        <artifactId>oerms-parent</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>auth-server</artifactId>
+    <packaging>jar</packaging>
+    <name>Auth Server</name>
+
+    <dependencies>
+        <!-- Common Module -->
+        <dependency>
+            <groupId>com.oerms</groupId>
+            <artifactId>common</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Starters -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
+        <!-- Spring Authorization Server -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-authorization-server</artifactId>
+        </dependency>
+
+        <!-- Eureka / Kafka / Database -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.42</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- MapStruct -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>1.6.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>1.6.3</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- MapStruct + Lombok integration -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok-mapstruct-binding</artifactId>
+            <version>0.2.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- OpenAPI Documentation -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.8.13</version>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-models</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Spring Boot Maven Plugin -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>3.5.8</version>
+            </plugin>
+
+            <!-- Compiler Plugin for MapStruct -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>1.6.3</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.42</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>0.2.0</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/AuthServerApplication.java
+# ============================================
+
+package com.oerms.auth;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
+@SpringBootApplication
+@EnableJpaAuditing
+@EnableJpaRepositories(basePackages = "com.oerms.auth.repository")
+@EntityScan(basePackages = "com.oerms.auth.entity")
+public class AuthServerApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(AuthServerApplication.class, args);
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/config/SecurityConfig.java
+# ============================================
+
+package com.oerms.auth.config;
+
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.oerms.auth.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
+import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.web.filter.ForwardedHeaderFilter;
+
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPublicKey;
+import java.security.interfaces.RSAPrivateKey;
+import java.time.Duration;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    @Value("${app.gateway-url}")
+    private String gatewayUrl;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    private final UserRepository userRepository;
+
+    @Bean
+    public ForwardedHeaderFilter forwardedHeaderFilter() {
+        return new ForwardedHeaderFilter();
+    }
+
+    // Order 1: Authorization Server endpoints (OAuth2/OIDC)
+    @Bean
+    @Order(1)
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+        OAuth2AuthorizationServerConfigurer authz = OAuth2AuthorizationServerConfigurer.authorizationServer();
+
+        http
+                .securityMatcher(authz.getEndpointsMatcher())
+                .with(authz, server -> server.oidc(Customizer.withDefaults()))
+                .csrf(csrf -> csrf.ignoringRequestMatchers(authz.getEndpointsMatcher()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/login").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .exceptionHandling(exceptions -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
+                        )
+                );
+
+        return http.build();
+    }
+
+    // Order 2: Resource Server for API endpoints (JWT validation)
+    @Bean
+    @Order(2)
+    public SecurityFilterChain resourceServerSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/api/**")
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/authenticate",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
+                                "/api/auth/health"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt
+                                .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                        )
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .csrf(csrf -> csrf.disable());
+
+        return http.build();
+    }
+
+    // Order 3: Default chain for form login (documentation, actuator, etc.)
+    @Bean
+    @Order(3)
+    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(
+                                "/login",
+                                "/actuator/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            response.sendRedirect(frontendUrl + "/login?logged_out=true");
+                        })
+                )
+                .csrf(csrf -> csrf.disable());
+
+        return http.build();
+    }
+
+    // JWT Authentication Converter for Resource Server
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+
+        // Extract authorities from 'roles' claim
+        grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
+        // Don't add prefix - roles already have ROLE_ prefix
+        grantedAuthoritiesConverter.setAuthorityPrefix("");
+
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+
+        return jwtAuthenticationConverter;
+    }
+
+    @Bean
+    public RegisteredClientRepository registeredClientRepository(PasswordEncoder encoder) {
+        // Browser client → OIDC Authorization Code
+        RegisteredClient webClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("oerms-web-client")
+                .clientSecret(encoder.encode("secret1"))
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri(gatewayUrl + "/login/oauth2/code/oerms-web-client")
+                .redirectUri(frontendUrl + "/auth/callback")
+                .postLogoutRedirectUri(gatewayUrl + "/")
+                .postLogoutRedirectUri(frontendUrl + "/")
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .scope(OidcScopes.EMAIL)
+                .scope("read")
+                .scope("write")
+                .clientSettings(ClientSettings.builder()
+                        .requireAuthorizationConsent(false)
+                        .requireProofKey(true)
+                        .build())
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofHours(1))
+                        .refreshTokenTimeToLive(Duration.ofDays(1))
+                        .reuseRefreshTokens(false)
+                        .build())
+                .build();
+
+        RegisteredClient nextJsClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("oerms-nextjs-client")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri(frontendUrl + "/auth/callback")
+                .redirectUri(frontendUrl + "/api/auth/callback")
+                .redirectUri(frontendUrl + "/api/auth/callback/oauth2")
+                .postLogoutRedirectUri(frontendUrl + "/")
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .scope(OidcScopes.EMAIL)
+                .scope("offline_access")
+                .scope("read")
+                .scope("write")
+                .clientSettings(ClientSettings.builder()
+                        .requireProofKey(true)
+                        .requireAuthorizationConsent(false)
+                        .build())
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofHours(1))
+                        .refreshTokenTimeToLive(Duration.ofDays(1))
+                        .reuseRefreshTokens(false)
+                        .build())
+                .build();
+
+        // Machine-to-Machine Client
+        RegisteredClient m2mClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("oerms-m2m")
+                .clientSecret(encoder.encode("supersecret"))
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .scope("read")
+                .scope("write")
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofHours(2))
+                        .build())
+                .build();
+
+        return new InMemoryRegisteredClientRepository(webClient, nextJsClient, m2mClient);
+    }
+
+    @Bean
+    public JWKSource<SecurityContext> jwkSource() {
+        KeyPair keyPair = generateRsaKey();
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        RSAKey rsaKey = new RSAKey.Builder(publicKey)
+                .privateKey(privateKey)
+                .keyID(UUID.randomUUID().toString())
+                .algorithm(JWSAlgorithm.RS256)
+                .build();
+        return new ImmutableJWKSet<>(new JWKSet(rsaKey));
+    }
+
+    private static KeyPair generateRsaKey() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            return generator.generateKeyPair();
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to generate RSA key pair", e);
+        }
+    }
+
+    @Bean
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer(UserRepository repo) {
+        return context -> {
+            if (context.getTokenType().getValue().equals("access_token")) {
+                if (context.getPrincipal() != null) {
+                    String principalName = context.getPrincipal().getName();
+
+                    repo.findByEmail(principalName)
+                            .or(() -> repo.findByUserName(principalName))
+                            .ifPresent(user -> {
+                                context.getClaims()
+                                        .claim("userId", user.getId())
+                                        .claim("email", user.getEmail())
+                                        .claim("username", user.getUserName())
+                                        .claim("roles", user.getRoles().stream()
+                                                .map(role -> "ROLE_" + role.name())
+                                                .collect(Collectors.toList()))
+                                        .claim("authorities", user.getRoles().stream()
+                                                .map(Enum::name)
+                                                .collect(Collectors.toList()));
+                            });
+                }
+            }
+        };
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
+        return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
+    }
+
+    @Bean
+    public AuthorizationServerSettings authorizationServerSettings() {
+        return AuthorizationServerSettings.builder().build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public OAuth2AuthorizationService authorizationService() {
+        return new InMemoryOAuth2AuthorizationService();
+    }
+
+    @Bean
+    public JwtEncoder jwtEncoder(JWKSource<SecurityContext> jwkSource) {
+        return new NimbusJwtEncoder(jwkSource);
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/config/MvcConfig.java
+# ============================================
+
+package com.oerms.auth.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class MvcConfig implements WebMvcConfigurer {
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/login").setViewName("login");
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/kafka/UserEventProducer.java
+# ============================================
+
+package com.oerms.auth.kafka;
+
+import com.oerms.common.event.UserRegisteredEvent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.stereotype.Component;
+
+import java.util.concurrent.CompletableFuture;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class UserEventProducer {
+
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${app.kafka.topics.user-registered}")
+    private String userRegisteredTopic;
+
+    public void publishUserRegisteredEvent(UserRegisteredEvent event) {
+        log.info("Publishing user registered event for userId: {}", event.getUserId());
+        
+        CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send(
+            userRegisteredTopic, 
+            event.getUserId().toString(), 
+            event
+        );
+
+        future.whenComplete((result, ex) -> {
+            if (ex == null) {
+                log.info("User registered event published successfully: userId={}, offset={}", 
+                    event.getUserId(), 
+                    result.getRecordMetadata().offset());
+            } else {
+                log.error("Failed to publish user registered event for userId: {}", 
+                    event.getUserId(), ex);
+            }
+        });
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/entity/User.java
+# ============================================
+
+package com.oerms.auth.entity;
+
+import com.oerms.common.entity.BaseEntity;
+import com.oerms.common.enums.Role;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+import java.util.Set;
+
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "users", uniqueConstraints = {
+        @UniqueConstraint(columnNames = "user_name"),
+        @UniqueConstraint(columnNames = "email")
+})
+public class User extends BaseEntity {
+
+    @Column(name = "user_name", nullable = false, unique = true, length = 50)
+    private String userName;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean enabled = true;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean accountNonExpired = true;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean accountNonLocked = true;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean credentialsNonExpired = true;
+
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private Set<Role> roles = new java.util.HashSet<>();
+
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/repository/UserRepository.java
+# ============================================
+
+package com.oerms.auth.repository;
+
+import com.oerms.auth.entity.User;
+import com.oerms.common.enums.Role;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, UUID> {
+
+    Optional<User> findByUserName(String userName);
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByUserName(String userName);
+
+    boolean existsByEmail(String email);
+
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r = :role")
+    List<User> findByRole(@Param("role") Role role);
+
+    Page<User> findByEnabledTrue(Pageable pageable);
+
+    Page<User> findByEnabledFalse(Pageable pageable);
+
+    // Search users by username or email for pagination
+    Page<User> findByUserNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String userName, String email, Pageable pageable);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.enabled = true")
+    long countActiveUsers();
+
+    @Query("SELECT COUNT(u) FROM User u JOIN u.roles r WHERE r = :role")
+    long countByRole(@Param("role") Role role);
+
+    List<User> findByLastLoginBefore(LocalDateTime dateTime);
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/mapper/UserMapper.java
+# ============================================
+
+package com.oerms.auth.mapper;
+
+import com.oerms.auth.dto.UserResponse;
+import com.oerms.auth.entity.User;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+@Mapper(componentModel = "spring")
+public interface UserMapper {
+
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "userName", target = "userName")
+    @Mapping(source = "email", target = "email")
+    @Mapping(source = "enabled", target = "enabled")
+    @Mapping(source = "accountNonExpired", target = "accountNonExpired")
+    @Mapping(source = "accountNonLocked", target = "accountNonLocked")
+    @Mapping(source = "credentialsNonExpired", target = "credentialsNonExpired")
+    @Mapping(source = "roles", target = "roles")
+    @Mapping(source = "lastLogin", target = "lastLogin")
+    @Mapping(source = "createdAt", target = "createdAt")
+    @Mapping(source = "updatedAt", target = "updatedAt")
+    @Mapping(source = "createdBy", target = "createdBy")
+    @Mapping(source = "lastModifiedBy", target = "lastModifiedBy")
+    @Mapping(source = "version", target = "version")
+    UserResponse toUserResponse(User user);
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/dto/UserResponse.java
+# ============================================
+
+package com.oerms.auth.dto;
+
+import com.oerms.common.enums.Role;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserResponse {
+
+    private UUID id;
+    private String userName;
+    private String email;
+    private Boolean enabled;
+    private Boolean accountNonExpired;
+    private Boolean accountNonLocked;
+    private Boolean credentialsNonExpired;
+    private Set<Role> roles;
+    private LocalDateTime lastLogin;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String createdBy;       // inherited from BaseEntity
+    private String lastModifiedBy;  // inherited from BaseEntity
+    private Long version;           // inherited from BaseEntity
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/dto/LoginRequest.java
+# ============================================
+
+package com.oerms.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class LoginRequest {
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
+    private String email;
+
+    @NotBlank(message = "Password is required")
+    private String password;
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/dto/TokenResponse.java
+# ============================================
+
+package com.oerms.auth.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TokenResponse {
+
+    private String accessToken;
+    private String refreshToken;
+    private String tokenType;
+    private Long expiresIn;
+    private String scope;
+    private UserResponse user;
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/dto/RegisterRequest.java
+# ============================================
+
+package com.oerms.auth.dto;
+
+import com.oerms.common.enums.Role;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.HashSet;
+import java.util.Set;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class RegisterRequest {
+
+    @NotBlank(message = "Username is required")
+    @Size(min = 2, max = 50, message = "Username must be between 2 and 50 characters")
+    private String userName;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
+    private String email;
+
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
+    private String password;
+
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>(Set.of(Role.STUDENT));
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/dto/RegisterResponse.java
+# ============================================
+
+package com.oerms.auth.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class RegisterResponse {
+    private UserResponse user;
+    private String redirectUrl;
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/dto/PasswordResetRequest.java
+# ============================================
+
+package com.oerms.auth.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PasswordResetRequest {
+
+    @NotBlank(message = "Token is required")
+    private String token;
+
+    @NotBlank(message = "New password is required")
+    @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
+    private String newPassword;
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/service/AuthService.java
+# ============================================
+
+package com.oerms.auth.service;
+
+import com.oerms.auth.dto.RegisterRequest;
+import com.oerms.auth.dto.UserResponse;
+import com.oerms.auth.entity.User;
+import com.oerms.auth.kafka.UserEventProducer;
+import com.oerms.auth.mapper.UserMapper;
+import com.oerms.auth.repository.UserRepository;
+import com.oerms.common.enums.Role;
+import com.oerms.common.event.UserRegisteredEvent;
+import com.oerms.common.exception.ResourceAlreadyExistsException;
+import com.oerms.common.exception.ResourceNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
+    private final UserEventProducer userEventProducer;
+
+    @Transactional
+    public UserResponse registerUser(RegisterRequest request) {
+        if (userRepository.existsByUserName(request.getUserName())) {
+            throw new ResourceAlreadyExistsException("Username already exists");
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ResourceAlreadyExistsException("Email already exists");
+        }
+
+        log.info("Registering user: username={}, email={}", request.getUserName(), request.getEmail());
+
+        User user = User.builder()
+                .userName(request.getUserName())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
+                .roles(request.getRoles() != null && !request.getRoles().isEmpty()
+                        ? request.getRoles()
+                        : Set.of(Role.STUDENT))
+                .build();
+
+        user = userRepository.save(user);
+
+        // Publish Kafka event
+        UserRegisteredEvent event = UserRegisteredEvent.builder()
+                .userId(user.getId())
+                .username(user.getUserName())
+                .email(user.getEmail())
+                .roles(user.getRoles().stream().map(Enum::name).collect(Collectors.toSet()))
+                .registeredAt(LocalDateTime.now())
+                .build();
+
+        userEventProducer.publishUserRegisteredEvent(event);
+        log.info("User registered and event published: userId={}", user.getId());
+
+        return userMapper.toUserResponse(user);
+    }
+
+    @Transactional
+    public UserResponse assignRole(UUID userId, Role role) {
+        User user = findUser(userId);
+        if (user.getRoles().contains(role)) {
+            log.warn("User already has role {}: userId={}", role, userId);
+        } else {
+            user.getRoles().add(role);
+            userRepository.save(user);
+            log.info("Role {} assigned to userId={}", role, userId);
+        }
+        return userMapper.toUserResponse(user);
+    }
+
+    @Transactional
+    public UserResponse removeRole(UUID userId, Role role) {
+        User user = findUser(userId);
+        if (!user.getRoles().contains(role)) {
+            log.warn("User does not have role {}: userId={}", role, userId);
+        } else if (user.getRoles().size() <= 1) {
+            throw new IllegalStateException("User must have at least one role");
+        } else {
+            user.getRoles().remove(role);
+            userRepository.save(user);
+            log.info("Role {} removed from userId={}", role, userId);
+        }
+        return userMapper.toUserResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUserById(UUID userId) {
+        User user = findUser(userId);
+        return userMapper.toUserResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+        return userMapper.toUserResponse(user);
+    }
+
+    @Transactional
+    public void updateLastLogin(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            user.setLastLogin(LocalDateTime.now());
+            userRepository.save(user);
+            log.info("Updated last login for user: {}", email);
+        });
+    }
+
+    private User findUser(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/service/UserService.java
+# ============================================
+
+package com.oerms.auth.service;
+
+import com.oerms.auth.dto.UserResponse;
+import com.oerms.auth.entity.User;
+import com.oerms.auth.mapper.UserMapper;
+import com.oerms.auth.repository.UserRepository;
+import com.oerms.common.dto.PageResponse;
+import com.oerms.common.enums.Role;
+import com.oerms.common.exception.ResourceNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+
+    public PageResponse<UserResponse> getAllUsers(Pageable pageable) {
+        Page<User> page = userRepository.findAll(pageable);
+        List<UserResponse> content = page.stream()
+                .map(userMapper::toUserResponse)
+                .collect(Collectors.toList());
+        return PageResponse.of(content, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
+    }
+
+    public PageResponse<UserResponse> searchUsers(String query, Pageable pageable) {
+        Page<User> page = userRepository
+                .findByUserNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query, pageable);
+        List<UserResponse> content = page.stream()
+                .map(userMapper::toUserResponse)
+                .collect(Collectors.toList());
+        return PageResponse.of(content, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
+    }
+
+    public UserResponse getUserById(UUID id) {
+        return userMapper.toUserResponse(findUser(id));
+    }
+
+    public void enableUser(UUID id) {
+        User user = findUser(id);
+        user.setEnabled(true);
+        userRepository.save(user);
+        log.info("User enabled: {}", id);
+    }
+
+    public void disableUser(UUID id) {
+        User user = findUser(id);
+        user.setEnabled(false);
+        userRepository.save(user);
+        log.info("User disabled: {}", id);
+    }
+
+    public void lockAccount(UUID id) {
+        User user = findUser(id);
+        user.setAccountNonLocked(false);
+        userRepository.save(user);
+        log.info("Account locked: {}", id);
+    }
+
+    public void unlockAccount(UUID id) {
+        User user = findUser(id);
+        user.setAccountNonLocked(true);
+        userRepository.save(user);
+        log.info("Account unlocked: {}", id);
+    }
+
+    public UserResponse assignRole(UUID id, Role role) {
+        User user = findUser(id);
+        if (!user.getRoles().contains(role)) {
+            user.getRoles().add(role);
+            userRepository.save(user);
+            log.info("Role {} assigned to userId={}", role, id);
+        }
+        return userMapper.toUserResponse(user);
+    }
+
+    public UserResponse removeRole(UUID id, Role role) {
+        User user = findUser(id);
+        if (user.getRoles().size() <= 1) {
+            throw new IllegalStateException("User must have at least one role");
+        }
+        if (user.getRoles().contains(role)) {
+            user.getRoles().remove(role);
+            userRepository.save(user);
+            log.info("Role {} removed from userId={}", role, id);
+        }
+        return userMapper.toUserResponse(user);
+    }
+
+    public void deleteUser(UUID id) {
+        User user = findUser(id);
+        userRepository.delete(user);
+        log.info("User deleted: {}", id);
+    }
+
+    private User findUser(UUID id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/service/EmailService.java
+# ============================================
+
+//package com.oerms.auth.service;
+//
+//import lombok.RequiredArgsConstructor;
+//import lombok.extern.slf4j.Slf4j;
+//import org.springframework.beans.factory.annotation.Value;
+//import org.springframework.mail.SimpleMailMessage;
+//import org.springframework.mail.javamail.JavaMailSender;
+//import org.springframework.scheduling.annotation.Async;
+//import org.springframework.stereotype.Service;
+//
+//@Service
+//@RequiredArgsConstructor
+//@Slf4j
+//public class EmailService {
+//
+//    private final JavaMailSender mailSender;
+//
+//    @Value("${app.mail.from}")
+//    private String fromEmail;
+//
+//    @Value("${app.frontend.url}")
+//    private String frontendUrl;
+//
+//    @Async
+//    public void sendVerificationEmail(String to, String fullName, String token) {
+//        try {
+//            String verificationUrl = frontendUrl + "/verify-email?token=" + token;
+//
+//            SimpleMailMessage message = new SimpleMailMessage();
+//            message.setFrom(fromEmail);
+//            message.setTo(to);
+//            message.setSubject("OERMS - Verify Your Email Address");
+//            message.setText(String.format(
+//                "Dear %s,\n\n" +
+//                "Thank you for registering with OERMS!\n\n" +
+//                "Please click the link below to verify your email address:\n" +
+//                "%s\n\n" +
+//                "This link will expire in 24 hours.\n\n" +
+//                "If you did not create this account, please ignore this email.\n\n" +
+//                "Best regards,\n" +
+//                "OERMS Team",
+//                fullName, verificationUrl
+//            ));
+//
+//            mailSender.send(message);
+//            log.info("Verification email sent to: {}", to);
+//        } catch (Exception e) {
+//            log.error("Failed to send verification email to: {}", to, e);
+//        }
+//    }
+//
+//    @Async
+//    public void sendPasswordResetEmail(String to, String fullName, String token) {
+//        try {
+//            String resetUrl = frontendUrl + "/reset-password?token=" + token;
+//
+//            SimpleMailMessage message = new SimpleMailMessage();
+//            message.setFrom(fromEmail);
+//            message.setTo(to);
+//            message.setSubject("OERMS - Password Reset Request");
+//            message.setText(String.format(
+//                "Dear %s,\n\n" +
+//                "We received a request to reset your password.\n\n" +
+//                "Please click the link below to reset your password:\n" +
+//                "%s\n\n" +
+//                "This link will expire in 1 hour.\n\n" +
+//                "If you did not request a password reset, please ignore this email or contact support.\n\n" +
+//                "Best regards,\n" +
+//                "OERMS Team",
+//                fullName, resetUrl
+//            ));
+//
+//            mailSender.send(message);
+//            log.info("Password reset email sent to: {}", to);
+//        } catch (Exception e) {
+//            log.error("Failed to send password reset email to: {}", to, e);
+//        }
+//    }
+//
+//    @Async
+//    public void sendWelcomeEmail(String to, String fullName) {
+//        try {
+//            SimpleMailMessage message = new SimpleMailMessage();
+//            message.setFrom(fromEmail);
+//            message.setTo(to);
+//            message.setSubject("Welcome to OERMS!");
+//            message.setText(String.format(
+//                "Dear %s,\n\n" +
+//                "Welcome to the Online Exam & Result Management System!\n\n" +
+//                "Your email has been verified and your account is now active.\n\n" +
+//                "You can now log in and start using all the features of OERMS.\n\n" +
+//                "Best regards,\n" +
+//                "OERMS Team",
+//                fullName
+//            ));
+//
+//            mailSender.send(message);
+//            log.info("Welcome email sent to: {}", to);
+//        } catch (Exception e) {
+//            log.error("Failed to send welcome email to: {}", to, e);
+//        }
+//    }
+//}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/service/TokenBlacklistService.java
+# ============================================
+
+package com.oerms.auth.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class TokenBlacklistService {
+
+    private final RedisTemplate<String, String> redisTemplate;
+    private static final String BLACKLIST_PREFIX = "token:blacklist:";
+
+    public void blacklistToken(String token, Long expirationTimeInSeconds) {
+        String key = BLACKLIST_PREFIX + token;
+        redisTemplate.opsForValue().set(key, "blacklisted", Duration.ofSeconds(expirationTimeInSeconds));
+        log.info("Token blacklisted successfully");
+    }
+
+    public boolean isTokenBlacklisted(String token) {
+        String key = BLACKLIST_PREFIX + token;
+        Boolean exists = redisTemplate.hasKey(key);
+        return exists != null && exists;
+    }
+
+    public void removeFromBlacklist(String token) {
+        String key = BLACKLIST_PREFIX + token;
+        redisTemplate.delete(key);
+        log.info("Token removed from blacklist");
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/security/CustomUserDetails.java
+# ============================================
+
+package com.oerms.auth.security;
+
+import com.oerms.auth.entity.User;
+import com.oerms.common.enums.Role;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
+@RequiredArgsConstructor
+public class CustomUserDetails implements UserDetails {
+
+    @Getter
+    private final UUID userId;
+    private final String username;
+    private final String password;
+    private final boolean enabled;
+    private final boolean accountNonExpired;
+    private final boolean accountNonLocked;
+    private final boolean credentialsNonExpired;
+    private final Collection<? extends GrantedAuthority> authorities;
+
+    public static CustomUserDetails from(User user) {
+        Set<GrantedAuthority> authorities = new HashSet<>();
+
+        // Add roles with ROLE_ prefix
+        user.getRoles().forEach(role ->
+            authorities.add(new SimpleGrantedAuthority(role.getRoleWithPrefix()))
+        );
+
+        // Add granular permissions based on roles
+        user.getRoles().forEach(role -> {
+            switch (role) {
+                case STUDENT -> {
+                    authorities.add(new SimpleGrantedAuthority("exam:read"));
+                    authorities.add(new SimpleGrantedAuthority("attempt:create"));
+                    authorities.add(new SimpleGrantedAuthority("result:read"));
+                }
+                case TEACHER -> {
+                    authorities.add(new SimpleGrantedAuthority("exam:create"));
+                    authorities.add(new SimpleGrantedAuthority("exam:read"));
+                    authorities.add(new SimpleGrantedAuthority("exam:update"));
+                    authorities.add(new SimpleGrantedAuthority("exam:delete"));
+                    authorities.add(new SimpleGrantedAuthority("question:create"));
+                    authorities.add(new SimpleGrantedAuthority("question:read"));
+                    authorities.add(new SimpleGrantedAuthority("question:update"));
+                    authorities.add(new SimpleGrantedAuthority("question:delete"));
+                    authorities.add(new SimpleGrantedAuthority("result:read"));
+                }
+                case ADMIN -> {
+                    authorities.add(new SimpleGrantedAuthority("exam:create"));
+                    authorities.add(new SimpleGrantedAuthority("exam:read"));
+                    authorities.add(new SimpleGrantedAuthority("exam:update"));
+                    authorities.add(new SimpleGrantedAuthority("exam:delete"));
+                    authorities.add(new SimpleGrantedAuthority("question:create"));
+                    authorities.add(new SimpleGrantedAuthority("question:read"));
+                    authorities.add(new SimpleGrantedAuthority("question:update"));
+                    authorities.add(new SimpleGrantedAuthority("question:delete"));
+                    authorities.add(new SimpleGrantedAuthority("attempt:create"));
+                    authorities.add(new SimpleGrantedAuthority("result:read"));
+                    authorities.add(new SimpleGrantedAuthority("user:manage"));
+                }
+            }
+        });
+
+        return new CustomUserDetails(
+            user.getId(),
+            user.getUserName(),
+            user.getPassword(),
+            user.isEnabled(),
+            user.isAccountNonExpired(),
+            user.isAccountNonLocked(),
+            user.isCredentialsNonExpired(),
+            authorities
+        );
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return authorities;
+    }
+
+    @Override
+    public String getPassword() {
+        return password;
+    }
+
+    @Override
+    public String getUsername() {
+        return username;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return accountNonExpired;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return accountNonLocked;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return credentialsNonExpired;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/security/JwtTokenCustomizer.java
+# ============================================
+
+//package com.oerms.auth.security;
+//
+//import com.oerms.auth.entity.User;
+//import com.oerms.auth.repository.UserRepository;
+//import lombok.RequiredArgsConstructor;
+//import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+//import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+//import org.springframework.stereotype.Component;
+//
+//import java.util.stream.Collectors;
+//
+//@Component
+//@RequiredArgsConstructor
+//public class JwtTokenCustomizer implements OAuth2TokenCustomizer<JwtEncodingContext> {
+//
+//    private final UserRepository userRepository;
+//
+//    @Override
+//    public void customize(JwtEncodingContext context) {
+//        String email = context.getPrincipal().getName();
+//
+//        userRepository.findByEmail(email).ifPresent(user -> {
+//            context.getClaims()
+//                    .claim("userId", user.getId().toString())
+//                    .claim("email", user.getEmail())
+//                    .claim("fullName", user.getFullName())
+//                    .claim("roles", user.getRoles().stream()
+//                            .map(role -> "ROLE_" + role.name())
+//                            .collect(Collectors.toSet()))
+//                    .claim("emailVerified", user.getEmailVerified())
+//                    .claim("enabled", user.getEnabled());
+//        });
+//    }
+//}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/security/CustomUserDetailsService.java
+# ============================================
+
+package com.oerms.auth.security;
+
+import com.oerms.auth.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserRepository userRepository;
+
+    @Override
+    @Transactional
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return userRepository.findByEmail(email)
+                .map(CustomUserDetails::from)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+    }
+
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/exception/GlobalExceptionHandler.java
+# ============================================
+
+package com.oerms.auth.exception;
+
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.exception.ResourceAlreadyExistsException;
+import com.oerms.common.exception.ResourceNotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResourceAlreadyExists(ResourceAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ApiResponse.error(ex.getMessage(),null));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ApiResponse.error(ex.getMessage(),null));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse.error(ex.getMessage(),null));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(
+            MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse.error("Validation failed", errors));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ApiResponse.error("An error occurred: " + ex.getMessage(),null));
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/controller/AuthController.java
+# ============================================
+
+package com.oerms.auth.controller;
+
+import com.oerms.auth.dto.RegisterRequest;
+import com.oerms.auth.dto.RegisterResponse;
+import com.oerms.auth.dto.UserResponse;
+import com.oerms.auth.service.AuthService;
+import com.oerms.common.dto.ApiResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+@Slf4j
+public class AuthController {
+
+    private final AuthService authService;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<RegisterResponse>> register(
+            @Valid @RequestBody RegisterRequest request) {
+        log.info("Registration request received for username: {}", request.getUserName());
+
+        UserResponse responseDto = authService.registerUser(request);
+        RegisterResponse response = new RegisterResponse(responseDto, "/profile/update");
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("User registered successfully. Please complete your profile.", response));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || authentication.getPrincipal() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String email;
+        if (authentication.getPrincipal() instanceof String) {
+            email = (String) authentication.getPrincipal();
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        UserResponse user = authService.getUserByEmail(email);
+        return ResponseEntity.ok(ApiResponse.success(user));
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        Map<String, String> health = new HashMap<>();
+        health.put("status", "UP");
+        health.put("service", "auth-server");
+        return ResponseEntity.ok(health);
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/controller/RoleController.java
+# ============================================
+
+package com.oerms.auth.controller;
+
+import com.oerms.auth.dto.UserResponse;
+import com.oerms.auth.service.AuthService;
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.enums.Role;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/auth/roles")
+@RequiredArgsConstructor
+@Slf4j
+public class RoleController {
+
+    private final AuthService authService;
+
+    @PostMapping("/{userId}/assign/{role}")
+    @PreAuthorize("hasAuthority('user:manage') or hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> assignRole(
+            @PathVariable UUID userId,
+            @PathVariable Role role) {
+
+        log.info("Assigning role {} to user {}", role, userId);
+        UserResponse user = authService.assignRole(userId, role);
+        return ResponseEntity.ok(ApiResponse.success("Role assigned successfully", user));
+    }
+
+    @DeleteMapping("/{userId}/remove/{role}")
+    @PreAuthorize("hasAuthority('user:manage') or hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> removeRole(
+            @PathVariable UUID userId,
+            @PathVariable Role role) {
+
+        log.info("Removing role {} from user {}", role, userId);
+        UserResponse user = authService.removeRole(userId, role);
+        return ResponseEntity.ok(ApiResponse.success("Role removed successfully", user));
+    }
+
+    @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAuthority('user:manage') or hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable UUID userId) {
+
+        log.info("Fetching user with id {}", userId);
+        UserResponse user = authService.getUserById(userId);
+        return ResponseEntity.ok(ApiResponse.success(user));
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/java/com/oerms/auth/controller/UserManagementController.java
+# ============================================
+
+package com.oerms.auth.controller;
+
+import com.oerms.auth.dto.UserResponse;
+import com.oerms.auth.service.UserService;
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.dto.PageResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+@Slf4j
+public class UserManagementController {
+
+    private final UserService userService;
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        PageRequest pageable = PageRequest.of(page, size, sort);
+
+        log.info("Fetching users page {} size {} sorted by {} {}", page, size, sortBy, sortDir);
+        PageResponse<UserResponse> users = userService.getAllUsers(pageable);
+        return ResponseEntity.ok(ApiResponse.success(users));
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> searchUsers(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        PageRequest pageable = PageRequest.of(page, size, sort);
+
+        log.info("Searching users with query '{}' page {} size {} sorted by {} {}", query, page, size, sortBy, sortDir);
+        PageResponse<UserResponse> users = userService.searchUsers(query, pageable);
+        return ResponseEntity.ok(ApiResponse.success(users));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable UUID id) {
+        log.info("Fetching user with id {}", id);
+        UserResponse user = userService.getUserById(id);
+        return ResponseEntity.ok(ApiResponse.success(user));
+    }
+
+    @PutMapping("/{id}/enable")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> enableUser(@PathVariable UUID id) {
+        log.info("Enabling user with id {}", id);
+        userService.enableUser(id);
+        return ResponseEntity.ok(ApiResponse.success("User enabled successfully", null));
+    }
+
+    @PutMapping("/{id}/disable")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> disableUser(@PathVariable UUID id) {
+        log.info("Disabling user with id {}", id);
+        userService.disableUser(id);
+        return ResponseEntity.ok(ApiResponse.success("User disabled successfully", null));
+    }
+
+    @PutMapping("/{id}/lock")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> lockAccount(@PathVariable UUID id) {
+        log.info("Locking account for user id {}", id);
+        userService.lockAccount(id);
+        return ResponseEntity.ok(ApiResponse.success("Account locked successfully", null));
+    }
+
+    @PutMapping("/{id}/unlock")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> unlockAccount(@PathVariable UUID id) {
+        log.info("Unlocking account for user id {}", id);
+        userService.unlockAccount(id);
+        return ResponseEntity.ok(ApiResponse.success("Account unlocked successfully", null));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
+        log.info("Deleting user with id {}", id);
+        userService.deleteUser(id);
+        return ResponseEntity.ok(ApiResponse.success("User deleted successfully", null));
+    }
+}
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/resources/application.yml
+# ============================================
+
+
+server:
+  port: 9000
+
+
+spring:
+  application:
+    name: auth-server
+  datasource:
+    url: jdbc:postgresql://localhost:5432/oerms_auth
+    username: postgres
+    password: "0000"
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+    security:
+      oauth2:
+        resourceserver:
+          jwt:
+            issuer-uri: http://localhost:8080
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      timeout: 60000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        linger.ms: 10
+        batch.size: 16384
+  # Thymeleaf configuration for login page
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    cache: false
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000 # 1 hour
+app:
+  gateway-url: http://localhost:8080
+  frontend-url: http://localhost:3000
+  kafka:
+    topics:
+      user-registered: user-registered-events
+      user-profile-created: user-profile-created-events
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+
+# Management & Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  # API Documentation
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+
+  # Swagger UI Configuration
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+    # OAuth2 Configuration for testing in Swagger UI
+    oauth:
+      client-id: oerms-web-client
+      client-secret: secret1
+      scopes:
+        - openid
+        - profile
+        - email
+        - read
+        - write
+      use-basic-authentication-with-access-code-grant: true
+      use-pkce-with-authorization-code-grant: false
+
+    # UI Configuration
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+    filter: true
+    try-it-out-enabled: true
+    persist-authorization: true
+    display-operation-id: false
+
+    # Disable validation errors
+    validator-url: none
+
+  # Show actuator endpoints
+  show-actuator: false
+
+  # Cache disabled for development
+  cache:
+    disabled: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.oerms.auth: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security.oauth2.server: TRACE
+    org.springframework.security.oauth2.core: TRACE
+    org.springframework.security.oauth2.client: TRACE
+
+    org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/resources/templates/login.html
+# ============================================
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - OERMS</title>
+    <meta name="description" content="Sign in to OERMS - Online Exam & Result Management System">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg {
+            background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease infinite;
+        }
+        @keyframes gradientShift { 0% {background-position:0% 50%;} 50% {background-position:100% 50%;} 100% {background-position:0% 50%;} }
+        .orb { position:absolute; border-radius:50%; filter:blur(60px); opacity:0.3; animation: float 20s ease-in-out infinite; }
+        @keyframes float { 0%,100% {transform:translate(0,0);} 50% {transform:translate(30px,-30px);} }
+        .card-animate { animation: slideUp 0.5s ease-out; }
+        @keyframes slideUp { from {opacity:0; transform:translateY(20px);} to {opacity:1; transform:translateY(0);} }
+        .input-focus:focus { box-shadow:0 0 0 3px rgba(99,102,241,0.2); }
+        .btn-primary { transition: all 0.2s ease; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow:0 4px 12px rgba(99,102,241,0.4); }
+        .btn-primary:active { transform: translateY(0); }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg flex items-center justify-center p-4 relative overflow-hidden">
+<!-- Floating orbs -->
+<div class="orb w-96 h-96 bg-white/20 top-0 left-1/4" style="animation-delay:0s;"></div>
+<div class="orb w-80 h-80 bg-purple-500/20 bottom-0 right-1/4" style="animation-delay:-7s;"></div>
+
+<!-- Login Card -->
+<div class="w-full max-w-md relative z-10 card-animate">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 sm:p-10">
+        <!-- Logo & Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-4 shadow-lg">
+                <span class="text-white text-2xl font-bold">O</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">Welcome back</h1>
+            <p class="mt-2 text-gray-600">Sign in to your OERMS account</p>
+        </div>
+
+        <!-- Error & Logout Messages -->
+        <div th:if="${param.error}" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p class="text-sm text-red-700">Invalid email or password. Please try again.</p>
+        </div>
+        <div th:if="${param.logout}" class="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
+            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <p class="text-sm text-green-700">You have been successfully logged out.</p>
+        </div>
+
+        <!-- Login Form -->
+        <form class="space-y-5" method="post" th:action="@{/login}">
+            <!-- CSRF Token (safe check) -->
+            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+            <!-- Email -->
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-700 mb-1.5">Email address</label>
+                <input id="username" name="username" type="email" required autocomplete="email" placeholder="you@example.com"
+                       class="input-focus w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+            </div>
+
+            <!-- Password -->
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <a href="/forgot-password" class="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors">Forgot password?</a>
+                </div>
+                <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"
+                       class="input-focus w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+            </div>
+
+            <!-- Remember Me -->
+            <div class="flex items-center">
+                <input id="remember-me" name="remember-me" type="checkbox"
+                       class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer">
+                <label for="remember-me" class="ml-2.5 block text-sm text-gray-700 cursor-pointer">Remember me for 30 days</label>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-primary w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Sign in
+            </button>
+        </form>
+
+        <!-- Divider & Register -->
+        <div class="relative my-8">
+            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
+            <div class="relative flex justify-center text-sm"><span class="px-4 bg-white text-gray-500">New to OERMS?</span></div>
+        </div>
+        <div class="text-center">
+            <a th:href="@{${@environment.getProperty('app.frontend-url', 'http://localhost:3000')} + '/register'}"
+               class="inline-flex items-center justify-center w-full py-3 px-4 border-2 border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-all">
+                Create an account
+                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <p class="mt-6 text-center text-sm text-white/80">© 2024 OERMS. All rights reserved.</p>
+</div>
+</body>
+</html>
+
+# ============================================
+# FILE: D:/projects/oerms/oerms-backend/auth-server/src/main/resources/templates/error/login-error.html
+# ============================================
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Error - OERMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-6">
+            <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Authentication Failed</h1>
+        <p class="text-gray-600 mb-6" th:text="${error ?: 'An error occurred during login. Please try again.'}"></p>
+        <a href="/login" class="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors">
+            Back to Login
+        </a>
+    </div>
+</body>
+</html>

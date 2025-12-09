@@ -1,0 +1,151 @@
+spring:
+  application:
+    name: attempt-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/oerms_attempt
+    username: postgres
+    password: "0000"
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc.batch_size: 20
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+    consumer:
+      group-id: attempt-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.oerms.common.event
+    topics:
+      attempt-started: attempt-started-topic
+      attempt-submitted: attempt-submitted-topic
+      attempt-auto-submitted: attempt-auto-submitted-topic
+      answer-saved: answer-saved-topic
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000
+      jedis:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 10000
+            loggerLevel: full
+server:
+  port: 9004
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    # CRITICAL: Use localhost for local development
+    hostname: localhost
+    # Use IP address instead of hostname
+    prefer-ip-address: false
+    # Use localhost in instance ID
+    instance-id: ${spring.application.name}:${server.port}
+    # Health check configuration
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+    # Explicitly set the home page URL
+    home-page-url: http://localhost:${server.port}/
+    status-page-url: http://localhost:${server.port}/actuator/info
+    health-check-url: http://localhost:${server.port}/actuator/health
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    # --- API REQUEST LOGGING (Spring MVC) ---
+    org.springframework.web: DEBUG
+    org.springframework.web.servlet.DispatcherServlet: DEBUG
+    org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG
+
+    # --- SPRING SECURITY (AUTH / JWT PROCESSING) ---
+    org.springframework.security: DEBUG
+    org.springframework.security.web: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.security.oauth2.server.resource: DEBUG
+
+    # --- FEIGN CALL LOGGING (attempt-service -> other services) ---
+    feign: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+
+    # --- KAFKA ---
+    org.springframework.kafka: INFO
+
+    # --- APPLICATION PACKAGE ---
+    com.oerms.attempt: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: basic
+
+attempt:
+  auto-save-interval: 30
+  grace-period-seconds: 60
+  max-submission-retries: 3
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method

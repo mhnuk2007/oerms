@@ -2,16 +2,16 @@ package com.oerms.user.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -27,26 +27,28 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers(
-                                "/actuator/health",
-                                "/actuator/info",
+                                "/actuator/**",
+                                "/api/users/health",
+                                "/api/users/public/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+                                "/files/**" // <-- Allow public access to uploaded files
                         ).permitAll()
 
-                        // Registration endpoint - public
-                        .requestMatchers(HttpMethod.POST, "/api/users/register").permitAll()
+                        // Profile read endpoints - authenticated users
+                        .requestMatchers(HttpMethod.GET, "/api/users/profile/**").authenticated()
 
-                        // User profile endpoints - own profile accessible to all authenticated
-                        .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/users/me").authenticated()
+                        // Profile write endpoints - authenticated users
+                        .requestMatchers(HttpMethod.POST, "/api/users/profile").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/profile").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/users/profile/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/profile/**").authenticated()
 
-                        // Admin endpoints - only ADMIN
+                        // Admin only endpoints
                         .requestMatchers("/api/users/admin/**").hasRole("ADMIN")
 
-                        // List users - ADMIN and TEACHER
-                        .requestMatchers(HttpMethod.GET, "/api/users").hasAnyRole("ADMIN", "TEACHER")
-
+                        // All other requests require authentication
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
@@ -57,19 +59,19 @@ public class SecurityConfig {
     }
 
     @Bean
+    public JwtDecoder jwtDecoder() {
+        return NimbusJwtDecoder.withJwkSetUri("http://localhost:9000/oauth2/jwks").build();
+    }
+
+    @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        grantedAuthoritiesConverter.setAuthoritiesClaimName("authorities");
+        grantedAuthoritiesConverter.setAuthoritiesClaimName("roles"); // Changed from "authorities" to "roles"
         grantedAuthoritiesConverter.setAuthorityPrefix("");
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
 
         return jwtAuthenticationConverter;
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 }

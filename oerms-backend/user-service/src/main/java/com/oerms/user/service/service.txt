@@ -1,0 +1,241 @@
+package com.oerms.userservice.service;
+
+import com.oerms.common.events.UserProfileCreatedEvent;
+import com.oerms.common.events.UserProfileUpdatedEvent;
+import com.oerms.userservice.dto.*;
+import com.oerms.userservice.entity.UserProfile;
+import com.oerms.userservice.mapper.UserProfileMapper;
+import com.oerms.userservice.repository.UserProfileRepository;
+import com.oerms.userservice.storage.FileStorageService;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class UserProfileService {
+
+    private final UserProfileRepository repository;
+    private final UserProfileMapper mapper;
+    private final FileStorageService fileStorageService;
+    private final UserProfileEventPublisher eventPublisher;
+
+    /*=========================================================
+     * CREATE PROFILE
+     *=========================================================*/
+    @Transactional
+    @CacheEvict(value = "userProfile", key = "#userId")
+    public UserProfileResponse createProfile(
+            UUID userId,
+            String email,
+            CreateProfileRequest request
+    ) {
+        log.info("Creating profile userId={}", userId);
+
+        if (repository.existsByUserId(userId)) {
+            throw new IllegalStateException("Profile already exists");
+        }
+
+        UserProfile profile = mapper.toEntity(request);
+        profile.setUserId(userId);
+        profile.setEmail(email);
+        profile.updateProfileCompletion();
+        profile = repository.save(profile);
+
+        eventPublisher.publishCreatedEvent(
+                new UserProfileCreatedEvent(
+                        profile.getUserId().toString(),
+                        profile.getFirstname(),
+                        profile.getLastname(),
+                        profile.getEmail()
+                )
+        );
+
+        return mapper.toResponse(profile);
+    }
+
+    /*=========================================================
+     * UPDATE PROFILE
+     *=========================================================*/
+    @Transactional
+    @CacheEvict(value = "userProfile", key = "#userId")
+    public UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request) {
+
+        UserProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found"));
+
+        mapper.updateEntityFromRequest(request, profile);
+        profile.updateProfileCompletion();
+
+        profile = repository.save(profile);
+
+        eventPublisher.publishUpdatedEvent(
+                new UserProfileUpdatedEvent(
+                        profile.getUserId().toString(),
+                        profile.getFirstname(),
+                        profile.getLastname(),
+                        profile.getEmail(),
+                        profile.isProfileCompleted()
+                )
+        );
+
+        return mapper.toResponse(profile);
+    }
+
+    /*=========================================================
+     * GET PROFILE
+     *=========================================================*/
+    @Transactional(readOnly = true)
+    @Cacheable(value = "userProfile", key = "#userId")
+    public UserProfileResponse getProfileByUserId(UUID userId) {
+        UserProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found"));
+        return mapper.toResponse(profile);
+    }
+
+    /*=========================================================
+     * PAGINATION + LISTING
+     *=========================================================*/
+    @Transactional(readOnly = true)
+    public Page<ProfileSummaryResponse> getAllProfiles(Pageable pageable) {
+
+        Page<UserProfile> profiles = repository.findAll(pageable);
+
+        return profiles.map(mapper::toSummaryResponse);
+    }
+
+    /*=========================================================
+     * SEARCH
+     *=========================================================*/
+    @Transactional(readOnly = true)
+    public Page<ProfileSummaryResponse> searchProfiles(String keyword, Pageable pageable) {
+
+        Page<UserProfile> profiles =
+                repository.searchByKeyword(keyword.toLowerCase(), pageable);
+
+        return profiles.map(mapper::toSummaryResponse);
+    }
+
+    /*=========================================================
+     * PROFILE PICTURE UPLOAD
+     *=========================================================*/
+    @Transactional
+    @CacheEvict(value = "userProfile", key = "#userId")
+    public FileUploadResponse uploadProfilePicture(UUID userId, MultipartFile file)
+            throws IOException {
+
+        UserProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found"));
+
+        if (profile.getProfilePicturePath() != null) {
+            fileStorageService.deleteFile(profile.getProfilePicturePath());
+        }
+
+        String path = fileStorageService.storeFile(
+                "profile-pictures",
+                userId.toString(),
+                file.getInputStream(),
+                file.getSize(),
+                file.getContentType()
+        );
+
+        profile.setProfilePicturePath(path);
+        repository.save(profile);
+
+        return new FileUploadResponse(path, file.getOriginalFilename());
+    }
+
+    /*=========================================================
+     * DELETE PROFILE PICTURE
+     *=========================================================*/
+    @Transactional
+    @CacheEvict(value = "userProfile", key = "#userId")
+    public void deleteProfilePicture(UUID userId) {
+
+        UserProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found"));
+
+        if (profile.getProfilePicturePath() != null) {
+            fileStorageService.deleteFile(profile.getProfilePicturePath());
+            profile.setProfilePicturePath(null);
+            repository.save(profile);
+        }
+    }
+
+    /*=========================================================
+     * ADD & REMOVE INSTITUTIONS
+     *=========================================================*/
+    @Transactional
+    @CacheEvict(value = "userProfile", key = "#userId")
+    public void addInstitution(UUID userId, String institution) {
+
+        UserProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found"));
+
+        profile.getInstitutions().add(institution);
+        profile.updateProfileCompletion();
+
+        repository.save(profile);
+    }
+
+    @Transactional
+    @CacheEvict(value = "userProfile", key = "#userId")
+    public void removeInstitution(UUID userId, String institution) {
+
+        UserProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found"));
+
+        profile.getInstitutions().remove(institution);
+        profile.updateProfileCompletion();
+
+        repository.save(profile);
+    }
+
+    /*=========================================================
+     * ACTIVATE / DEACTIVATE
+     *=========================================================*/
+    @Transactional
+    @CacheEvict(value = "userProfile", key = "#userId")
+    public void deactivateProfile(UUID userId) {
+
+        UserProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found"));
+
+        profile.setActive(false);
+        repository.save(profile);
+    }
+
+    @Transactional
+    @CacheEvict(value = "userProfile", key = "#userId")
+    public void activateProfile(UUID userId) {
+
+        UserProfile profile = repository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found"));
+
+        profile.setActive(true);
+        repository.save(profile);
+    }
+
+    /*=========================================================
+     * STATS
+     *=========================================================*/
+    @Transactional(readOnly = true)
+    public long getCompletedProfilesCount() {
+        return repository.countByProfileCompletedTrue();
+    }
+
+    @Transactional(readOnly = true)
+    public long getActiveProfilesCount() {
+        return repository.countByActiveTrue();
+    }
+}

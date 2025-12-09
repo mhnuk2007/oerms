@@ -1,71 +1,51 @@
 package com.oerms.user.service;
 
-import com.oerms.user.client.AuthServiceClient;
-import com.oerms.user.dto.UserProfileDTO;
-import com.oerms.user.entity.UserProfile;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import com.oerms.common.dto.UserProfileDTO;
+import com.oerms.common.event.UserRegisteredEvent;
+import com.oerms.user.dto.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import java.io.IOException;
+import java.util.UUID;
 
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class UserProfileService {
+public interface UserProfileService {
 
-    private final UserSyncService userSyncService;
-    private final AuthServiceClient authServiceClient;
+    // Create profile from registration event
+    UserProfileDTO createProfileFromEvent(UserRegisteredEvent event);
 
-    public UserProfileDTO getUserProfile(Long userId) {
-        try {
-            // Try cache/replica first
-            UserProfile profile = userSyncService.getUser(userId);
-            return mapToDTO(profile);
-        } catch (Exception e) {
-            // Fallback to auth-server if cache miss or sync issue
-            log.warn("User profile not in cache for user: {}, fetching from auth-server", userId);
-            return authServiceClient.getUser(userId);
-        }
-    }
+    // Update profile
+    UserProfileDTO updateProfile(UUID userId, UpdateProfileRequest request);
 
-    public UserProfileDTO getUserProfileByUsername(String username) {
-        try {
-            UserProfile profile = userSyncService.getUserByUsername(username);
-            return mapToDTO(profile);
-        } catch (Exception e) {
-            log.warn("User profile not in cache for username: {}, fetching from auth-server", username);
-            return authServiceClient.getUserByUsername(username);
-        }
-    }
+    // Fetch profile
+    UserProfileDTO getProfileByUserId(UUID userId);
+    UserProfileDTO getProfileById(UUID profileId);
+    UserProfileDTO getProfileByEmail(String email);
 
-    public List<UserProfileDTO> getAllUsers() {
-        List<UserProfile> profiles = userSyncService.getAllUsers();
-        return profiles.stream().map(this::mapToDTO).toList();
-    }
+    boolean existsByUserId(UUID userId);
 
-    // Delegate write operations to auth-server
-    public UserProfileDTO updateUserProfile(Long userId, UserProfileDTO dto) {
-        return authServiceClient.updateUser(userId, dto);
-    }
+    // Profile queries
+    Page<ProfileSummaryResponse> getAllProfiles(Pageable pageable);
+    Page<ProfileSummaryResponse> searchProfiles(String keyword, Pageable pageable);
+    Page<ProfileSummaryResponse> getProfilesByCity(String city, Pageable pageable);
+    Page<ProfileSummaryResponse> getProfilesByInstitution(String institution, Pageable pageable);
 
-    private UserProfileDTO mapToDTO(UserProfile profile) {
-        return UserProfileDTO.builder()
-            .id(profile.getId())
-            .username(profile.getUsername())
-            .email(profile.getEmail())
-            .firstName(profile.getFirstName())
-            .lastName(profile.getLastName())
-            .phone(profile.getPhone())
-            .bio(profile.getBio())
-            .profileImageUrl(profile.getProfileImageUrl())
-            .dateOfBirth(profile.getDateOfBirth())
-            .address(profile.getAddress())
-            .city(profile.getCity())
-            .state(profile.getState())
-            .country(profile.getCountry())
-            .roles(profile.getRoles())
-            .enabled(profile.getEnabled())
-            .build();
-    }
+    // File management
+    FileUploadResponse uploadProfilePicture(UUID userId, MultipartFile file) throws IOException;
+    void deleteProfilePicture(UUID userId);
+
+    // Institution management (single institution per user)
+    void addInstitution(UUID userId, String institution);
+    void removeInstitution(UUID userId); // no parameter needed
+
+    // Profile status
+    void activateProfile(UUID userId);
+    void deactivateProfile(UUID userId);
+
+    // Statistics
+    long getTotalProfilesCount();
+    long getCompletedProfilesCount();
+    long getActiveProfilesCount();
+    long getIncompleteProfilesCount();
 }

@@ -1,6 +1,7 @@
 package com.oerms.result.dto;
 
 import lombok.*;
+import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -21,17 +22,13 @@ public class ExamResultStatisticsDTO {
     private Double medianScore;
 
     private Double averagePercentage;
-    private Double passPercentage;
+    private Double passRate; // Renamed from passPercentage for consistency
 
-    private Long totalPassed;
-    private Long totalFailed;
+    private Long passedCount; // Added
+    private Long failedCount; // Added
 
-    private Long gradeAPlus;
-    private Long gradeA;
-    private Long gradeB;
-    private Long gradeC;
-    private Long gradeD;
-    private Long gradeF;
+    private Map<String, Long> gradeDistribution; // Changed from individual grades
+    private Long suspiciousResultsCount; // Added
 
     private Double averageTimeSpent; // minutes
 }

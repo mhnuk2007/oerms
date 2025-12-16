@@ -13,7 +13,7 @@ spring:
             - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
           discovery:
             locator:
-              enabled: false
+              enabled: false # Disabled to avoid conflicts with manual routes
               lower-case-service-id: true
           routes:
 
@@ -136,7 +136,7 @@ spring:
             - id: user-service
               uri: lb://user-service
               predicates:
-                - Path=/api/users/**
+                - Path=/api/profiles/**
               filters:
                 - name: CircuitBreaker
                   args:
@@ -212,8 +212,22 @@ app:
 
 eureka:
   client:
+    register-with-eureka: true
+    fetch-registry: true
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: http://localhost:8761/eureka/
+
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+    home-page-url: http://localhost:${server.port}/
+    status-page-url: http://localhost:${server.port}/actuator/info
+    health-check-url: http://localhost:${server.port}/actuator/health
+
 
 management:
   endpoints:
@@ -295,7 +309,11 @@ resilience4j:
 logging:
   level:
     root: INFO
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.web: DEBUG
-    org.springdoc: DEBUG
-    reactor.netty: INFO
+    org.springframework: WARN
+    org.springframework.cloud.gateway: INFO
+    org.springframework.web: WARN
+    reactor.netty: WARN
+    reactor.netty.http.client: INFO
+    org.springdoc: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%logger{36}] - %msg%n"

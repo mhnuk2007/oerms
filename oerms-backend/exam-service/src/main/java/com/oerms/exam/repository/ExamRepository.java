@@ -1,7 +1,7 @@
 package com.oerms.exam.repository;
 
 import com.oerms.exam.entity.Exam;
-import com.oerms.common.enums.ExamStatus;
+import com.oerms.exam.enums.ExamStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -55,9 +55,6 @@ public interface ExamRepository extends JpaRepository<Exam, UUID> {
 
     // ==================== Auto-start Query (Corrected) ====================
 
-    /**
-     * Find exams that should start within the last 1 minute
-     */
     @Query("SELECT e FROM Exam e WHERE e.status = 'PUBLISHED' " +
             "AND e.isActive = true " +
             "AND e.startTime <= :now " +

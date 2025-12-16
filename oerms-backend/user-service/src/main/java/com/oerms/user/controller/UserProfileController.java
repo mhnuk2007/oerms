@@ -21,7 +21,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/profiles")
 @RequiredArgsConstructor
 public class UserProfileController {
 
@@ -31,10 +31,6 @@ public class UserProfileController {
        GET Endpoints
     ============================================================ */
 
-    /**
-     * Get all user profiles (for admin dashboard)
-     * This is the endpoint that was missing!
-     */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<ProfileSummaryResponse>>> getUserProfiles(Pageable pageable) {
@@ -61,13 +57,13 @@ public class UserProfileController {
         return ResponseEntity.ok(ApiResponse.success(userProfileService.getProfileByUserId(userId)));
     }
 
-    @GetMapping("/profiles")
+    @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<ProfileSummaryResponse>>> getAllProfiles(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(userProfileService.getAllProfiles(pageable)));
     }
 
-    @GetMapping("/profiles/search")
+    @GetMapping("/all/search")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<ProfileSummaryResponse>>> searchProfiles(
             @RequestParam String keyword, Pageable pageable) {
@@ -75,7 +71,7 @@ public class UserProfileController {
         return ResponseEntity.ok(ApiResponse.success(userProfileService.searchProfiles(keyword, pageable)));
     }
 
-    @GetMapping("/profiles/city/{city}")
+    @GetMapping("/all/city/{city}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<ProfileSummaryResponse>>> getProfilesByCity(
             @PathVariable String city, Pageable pageable) {
@@ -83,7 +79,7 @@ public class UserProfileController {
         return ResponseEntity.ok(ApiResponse.success(userProfileService.getProfilesByCity(city, pageable)));
     }
 
-    @GetMapping("/profiles/institution/{institution}")
+    @GetMapping("/all/institution/{institution}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<ProfileSummaryResponse>>> getProfilesByInstitution(
             @PathVariable String institution, Pageable pageable) {

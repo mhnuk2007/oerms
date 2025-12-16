@@ -14,17 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-/**
- * Admin User Management Controller
- * Handles administrative operations for user management
- *
- * IMPORTANT: This was renamed from UserManagementController
- * Old path: /api/users
- * New path: /api/admin/users
- *
- * Reason: To avoid routing conflicts with user-service which handles
- * user profile endpoints at /api/users/**
- */
 @RestController
 @RequestMapping("/api/admin/users")  // CHANGED FROM /api/users
 @RequiredArgsConstructor

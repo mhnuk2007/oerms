@@ -15,10 +15,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * OpenAPI Configuration for API Gateway
- * Aggregates all microservice OpenAPI docs
- */
 @Configuration
 public class OpenApiConfig {
 

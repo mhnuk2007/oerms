@@ -1,5 +1,7 @@
 package com.oerms.result.kafka;
 
+import com.oerms.common.dto.AttemptDTO;
+import com.oerms.common.event.AttemptEvent;
 import com.oerms.result.service.ResultService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,16 +15,25 @@ public class AttemptEventConsumer {
 
     private final ResultService resultService;
 
-    @KafkaListener(topics = "attempt-submitted-topic", groupId = "result-service-group")
+    @KafkaListener(
+            topics = {"attempt-submitted-topic", "attempt-auto-submitted-topic"},
+            groupId = "result-service-group",
+            containerFactory = "kafkaListenerContainerFactory"
+    )
     public void handleAttemptSubmitted(AttemptEvent event) {
-        log.info("Received attempt submitted event: {}", event.getAttemptId());
-        
+        log.info("Received attempt event of type {} for attemptId: {}", event.getEventType(), event.getAttemptId());
+
         try {
-            // Fetch attempt details
-            // Create result
-            resultService.createResultFromAttempt(attemptDTO);
+            AttemptDTO attemptDto = event.getAttemptDTO(); // use common DTO
+            if (attemptDto == null) {
+                log.error("AttemptDTO is null in received AttemptEvent for attemptId: {}", event.getAttemptId());
+                return;
+            }
+
+            resultService.createResultFromAttempt(attemptDto);
+            log.info("Successfully processed attempt event of type {} for attemptId: {}", event.getEventType(), event.getAttemptId());
         } catch (Exception e) {
-            log.error("Error processing attempt submitted event", e);
+            log.error("Error processing attempt event of type {} for attemptId: {}", event.getEventType(), event.getAttemptId(), e);
         }
     }
 }

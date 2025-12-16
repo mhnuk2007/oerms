@@ -1,14 +1,17 @@
 package com.oerms.attempt.kafka;
 
-import com.oerms.attempt.entity.AttemptAnswer;
 import com.oerms.attempt.entity.ExamAttempt;
+import com.oerms.attempt.mapper.AttemptMapper;
+import com.oerms.common.dto.AttemptDTO;
+import com.oerms.common.event.AttemptEvent;
+import com.oerms.common.enums.AttemptEventType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -17,83 +20,35 @@ public class AttemptEventProducer {
 
     private final KafkaTemplate<String, AttemptEvent> kafkaTemplate;
 
-    private static final String ATTEMPT_STARTED_TOPIC = "attempt-started-topic";
-    private static final String ATTEMPT_SUBMITTED_TOPIC = "attempt-submitted-topic";
-    private static final String ATTEMPT_AUTO_SUBMITTED_TOPIC = "attempt-auto-submitted-topic";
-    private static final String ANSWER_SAVED_TOPIC = "answer-saved-topic";
+    private static final String ATTEMPT_STARTED = "attempt-started-topic";
+    private static final String ATTEMPT_SUBMITTED = "attempt-submitted-topic";
+    private static final String ATTEMPT_AUTO_SUBMITTED = "attempt-auto-submitted-topic";
 
-    public void publishAttemptStarted(ExamAttempt attempt) {
-        AttemptEvent event = AttemptEvent.builder()
-                .attemptId(attempt.getId())
-                .examId(attempt.getExamId())
-                .studentId(attempt.getStudentId())
-                .studentName(attempt.getStudentName())
-                .status(attempt.getStatus().name())
-                .timestamp(System.currentTimeMillis())
-                .additionalInfo(Map.of(
-                        "attemptNumber", attempt.getAttemptNumber(),
-                        "totalQuestions", attempt.getTotalQuestions()
-                ))
-                .build();
-
-        kafkaTemplate.send(ATTEMPT_STARTED_TOPIC, event);
-        log.info("Published attempt started event for attemptId: {}", attempt.getId());
+    public void publishAttemptStarted(ExamAttempt a) {
+        send(a, AttemptEventType.ATTEMPT_STARTED, ATTEMPT_STARTED);
     }
 
-    public void publishAnswerSaved(ExamAttempt attempt, AttemptAnswer answer) {
-        Map<String, Object> info = new HashMap<>();
-        info.put("questionId", answer.getQuestionId());
-        info.put("selectedOptions", answer.getSelectedOptions());
-        info.put("answerText", answer.getAnswerText());
-        info.put("flagged", answer.getFlagged());
-        info.put("marksAllocated", answer.getMarksAllocated());
-        info.put("marksObtained", answer.getMarksObtained());
-
-        AttemptEvent event = AttemptEvent.builder()
-                .attemptId(attempt.getId())
-                .examId(attempt.getExamId())
-                .studentId(attempt.getStudentId())
-                .status(attempt.getStatus().name())
-                .timestamp(System.currentTimeMillis())
-                .additionalInfo(info)
-                .build();
-
-        kafkaTemplate.send(ANSWER_SAVED_TOPIC, event);
-        log.debug("Published answer saved event for attemptId: {}, questionId: {}", attempt.getId(), answer.getQuestionId());
+    public void publishAttemptSubmitted(ExamAttempt a) {
+        send(a, AttemptEventType.ATTEMPT_SUBMITTED, ATTEMPT_SUBMITTED);
     }
 
-    public void publishAttemptSubmitted(ExamAttempt attempt) {
-        AttemptEvent event = AttemptEvent.builder()
-                .attemptId(attempt.getId())
-                .examId(attempt.getExamId())
-                .studentId(attempt.getStudentId())
-                .status(attempt.getStatus().name())
-                .timestamp(System.currentTimeMillis())
-                .additionalInfo(Map.of(
-                        "obtainedMarks", attempt.getObtainedMarks(),
-                        "percentage", attempt.getPercentage()
-                ))
-                .build();
-
-        kafkaTemplate.send(ATTEMPT_SUBMITTED_TOPIC, event);
-        log.info("Published attempt submitted event for attemptId: {}", attempt.getId());
+    public void publishAttemptAutoSubmitted(ExamAttempt a) {
+        send(a, AttemptEventType.ATTEMPT_AUTO_SUBMITTED, ATTEMPT_AUTO_SUBMITTED);
     }
 
-    public void publishAttemptAutoSubmitted(ExamAttempt attempt) {
+    private void send(ExamAttempt a, AttemptEventType type, String topic) {
+        AttemptDTO attemptDto = AttemptMapper.toCommonDto(a);
+
         AttemptEvent event = AttemptEvent.builder()
-                .attemptId(attempt.getId())
-                .examId(attempt.getExamId())
-                .studentId(attempt.getStudentId())
-                .status(attempt.getStatus().name())
-                .timestamp(System.currentTimeMillis())
-                .additionalInfo(Map.of(
-                        "obtainedMarks", attempt.getObtainedMarks(),
-                        "percentage", attempt.getPercentage(),
-                        "autoSubmitted", true
-                ))
+                .eventId(UUID.randomUUID())
+                .eventType(type)
+                .eventTime(LocalDateTime.now())
+                .sourceService("attempt-service")
+                .attemptId(a.getId())
+                .attemptDTO(attemptDto)
                 .build();
 
-        kafkaTemplate.send(ATTEMPT_AUTO_SUBMITTED_TOPIC, event);
-        log.info("Published attempt auto-submitted event for attemptId: {}", attempt.getId());
+        kafkaTemplate.send(topic, a.getId().toString(), event);
+        log.info("Published {} event for attemptId={}", type, a.getId());
     }
 }

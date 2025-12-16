@@ -12,5 +12,6 @@ public class PublishResultRequest {
     @NotNull(message = "Result ID is required")
     private UUID resultId;
 
-    private String teacherRemarks;
+    private String comments; // Renamed from teacherRemarks
+    private Boolean calculateRankings; // Added missing field
 }

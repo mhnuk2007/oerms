@@ -8,10 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * DTO for questions shown to students during exam
- * Does NOT include correctAnswer to prevent cheating
- */
+
 @Data
 @Builder
 @NoArgsConstructor

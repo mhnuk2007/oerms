@@ -16,7 +16,7 @@ public class QuestionDTO {
     private UUID id;
     private UUID examId;
     private String questionText;
-    private String type; // MCQ, MULTIPLE_SELECT, TRUE_FALSE, SHORT_ANSWER, ESSAY
+    private String questionType; // Renamed from 'type' to 'questionType'
     private Integer marks;
     private Integer orderIndex;
     private List<String> options; // For MCQ/MULTIPLE_SELECT

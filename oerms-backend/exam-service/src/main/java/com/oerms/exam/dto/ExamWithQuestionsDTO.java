@@ -1,6 +1,5 @@
 package com.oerms.exam.dto;
 
-import com.oerms.common.dto.ExamDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

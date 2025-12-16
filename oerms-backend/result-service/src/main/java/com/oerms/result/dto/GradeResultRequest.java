@@ -16,6 +16,5 @@ public class GradeResultRequest {
     @Min(value = 0, message = "Marks cannot be negative")
     private Double obtainedMarks;
 
-    private String teacherFeedback;
-    private String teacherRemarks;
+    private String comments; // Renamed from teacherFeedback for consistency
 }

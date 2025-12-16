@@ -39,11 +39,8 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: com.oerms.common.event
-    topics:
-      attempt-started: attempt-started-topic
-      attempt-submitted: attempt-submitted-topic
-      attempt-auto-submitted: attempt-auto-submitted-topic
-      answer-saved: answer-saved-topic
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.oerms.common.event.AttemptEvent
 
   data:
     redis:
@@ -69,29 +66,33 @@ spring:
             connectTimeout: 5000
             readTimeout: 10000
             loggerLevel: full
+oauth2:
+  client:
+    token-uri: http://localhost:9000/oauth2/token        # auth-server token endpoint
+    client-id: oerms-m2m
+    client-secret: supersecret
+    scope: internal                                      # optional: request internal scope
 server:
   port: 9004
 
 eureka:
   client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
   instance:
-    # CRITICAL: Use localhost for local development
-    hostname: localhost
-    # Use IP address instead of hostname
-    prefer-ip-address: false
-    # Use localhost in instance ID
+    prefer-ip-address: true
     instance-id: ${spring.application.name}:${server.port}
-    # Health check configuration
+
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
-    # Explicitly set the home page URL
+
     home-page-url: http://localhost:${server.port}/
     status-page-url: http://localhost:${server.port}/actuator/info
     health-check-url: http://localhost:${server.port}/actuator/health
+
 
 management:
   endpoints:
@@ -128,13 +129,6 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
-feign:
-  client:
-    config:
-      default:
-        connectTimeout: 5000
-        readTimeout: 5000
-        loggerLevel: basic
 
 attempt:
   auto-save-interval: 30
@@ -149,3 +143,6 @@ springdoc:
     path: /swagger-ui.html
     enabled: true
     operationsSorter: method
+
+question-service:
+  url: http://localhost:9003

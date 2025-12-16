@@ -1,10 +1,6 @@
 package com.oerms.attempt.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.util.UUID;
 
 @Data
@@ -25,8 +21,7 @@ public class ExamAttemptStatistics {
     private Double highestScore;
     private Double lowestScore;
 
-    /** Average time spent in minutes */
-    private Double averageTimeSpent;
+    private Double averageTimeSpentMinutes;
 
     private Long passedCount;
     private Long failedCount;

@@ -2,6 +2,7 @@ package com.oerms.result.service;
 
 import com.oerms.common.dto.ApiResponse;
 import com.oerms.common.dto.AttemptDTO;
+import com.oerms.common.dto.ExamDTO; // Changed from ExamDetailsDTO
 import com.oerms.common.exception.*;
 import com.oerms.common.util.JwtUtils;
 import com.oerms.result.client.*;
@@ -17,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,19 +52,29 @@ public class ResultService {
         }
 
         // Fetch exam details
-        ExamDetailsDTO exam = getExamOrThrow(attempt.getExamId());
+        ExamDTO exam = getExamOrThrow(attempt.getExamId()); // Changed from ExamDetailsDTO
 
         // Determine if manual grading is required
         boolean requiresManualGrading = attempt.getAnswers() != null && attempt.getAnswers().stream()
                 .anyMatch(answer -> answer.getMarksObtained() == null);
 
         // Calculate grade
-        String grade = calculateGrade(attempt.getObtainedMarks(), exam.getTotalMarks());
+        String grade = calculateGrade(attempt.getObtainedMarks(), attempt.getTotalMarks()); // Changed to use attempt.getTotalMarks()
 
         // Determine pass/fail
         boolean passed = attempt.getObtainedMarks() != null &&
                 exam.getPassingMarks() != null &&
                 attempt.getObtainedMarks() >= exam.getPassingMarks();
+
+        // Determine the initial status of the result
+        ResultStatus initialStatus;
+        if (requiresManualGrading) {
+            initialStatus = ResultStatus.PENDING_GRADING;
+        } else if (Boolean.TRUE.equals(exam.getShowResultsImmediately())) {
+            initialStatus = ResultStatus.PUBLISHED;
+        } else {
+            initialStatus = ResultStatus.DRAFT;
+        }
 
         // Create result entity
         Result result = Result.builder()
@@ -78,9 +88,10 @@ public class ResultService {
                 .percentage(attempt.getPercentage())
                 .grade(grade)
                 .passed(passed)
-                .status(requiresManualGrading ? ResultStatus.PENDING_GRADING : ResultStatus.DRAFT)
+                .totalQuestions(attempt.getTotalQuestions())
+                .status(initialStatus)
                 .requiresManualGrading(requiresManualGrading)
-                .timeTakenSeconds(attempt.getTimeTakenSeconds())
+                .timeTakenSeconds(attempt.getTimeTakenSeconds() != null ? attempt.getTimeTakenSeconds().longValue() : null)
                 .attemptNumber(attempt.getAttemptNumber())
                 .tabSwitches(attempt.getTabSwitches())
                 .webcamViolations(attempt.getWebcamViolations())
@@ -89,12 +100,19 @@ public class ResultService {
                 .autoSubmitted(attempt.getAutoSubmitted())
                 .build();
 
+        if (result.getStatus() == ResultStatus.PUBLISHED) {
+            result.setPublishedAt(LocalDateTime.now());
+        }
+
         result = resultRepository.save(result);
         log.info("Result created successfully: {}", result.getId());
 
         // Publish event
         try {
             eventProducer.publishResultCreated(result);
+            if (result.getStatus() == ResultStatus.PUBLISHED) {
+                eventProducer.publishResultPublished(result);
+            }
         } catch (Exception e) {
             log.error("Failed to publish result created event", e);
         }
@@ -116,7 +134,7 @@ public class ResultService {
 
         // Verify ownership for teachers
         if ("ROLE_TEACHER".equals(role)) {
-            ExamDetailsDTO exam = getExamOrThrow(result.getExamId());
+            ExamDTO exam = getExamOrThrow(result.getExamId()); // Changed from ExamDetailsDTO
             if (!exam.getTeacherId().equals(userId)) {
                 throw new UnauthorizedException("Not authorized to publish this result");
             }
@@ -173,7 +191,7 @@ public class ResultService {
 
         // Verify ownership for teachers
         if ("ROLE_TEACHER".equals(role)) {
-            ExamDetailsDTO exam = getExamOrThrow(result.getExamId());
+            ExamDTO exam = getExamOrThrow(result.getExamId()); // Changed from ExamDetailsDTO
             if (!exam.getTeacherId().equals(userId)) {
                 throw new UnauthorizedException("Not authorized to grade this result");
             }
@@ -184,7 +202,7 @@ public class ResultService {
             result.setObtainedMarks(request.getObtainedMarks());
 
             // Recalculate percentage
-            if (result.getTotalMarks() > 0) {
+            if (result.getTotalMarks() != null && result.getTotalMarks() > 0) { // Added null check for totalMarks
                 result.setPercentage((request.getObtainedMarks() / result.getTotalMarks()) * 100);
             }
 
@@ -192,7 +210,7 @@ public class ResultService {
             result.setGrade(calculateGrade(request.getObtainedMarks(), result.getTotalMarks()));
 
             // Recalculate pass/fail
-            ExamDetailsDTO exam = getExamOrThrow(result.getExamId());
+            ExamDTO exam = getExamOrThrow(result.getExamId()); // Changed from ExamDetailsDTO
             result.setPassed(request.getObtainedMarks() >= exam.getPassingMarks());
         }
 
@@ -245,7 +263,7 @@ public class ResultService {
             }
         } else if ("ROLE_TEACHER".equals(role)) {
             // Teachers can see results for their exams
-            ExamDetailsDTO exam = getExamOrThrow(result.getExamId());
+            ExamDTO exam = getExamOrThrow(result.getExamId()); // Changed from ExamDetailsDTO
             if (!exam.getTeacherId().equals(userId)) {
                 throw new UnauthorizedException("Not authorized to view this result");
             }
@@ -334,7 +352,7 @@ public class ResultService {
 
         log.debug("Calculating statistics for exam: {}", examId);
 
-        ExamDetailsDTO exam = getExamOrThrow(examId);
+        ExamDTO exam = getExamOrThrow(examId); // Changed from ExamDetailsDTO
         List<Result> allResults = resultRepository.findAllByExamId(examId);
         List<Result> publishedResults = resultRepository.findByExamIdAndStatus(examId, ResultStatus.PUBLISHED);
 
@@ -575,9 +593,9 @@ public class ResultService {
                 .orElseThrow(() -> new ResourceNotFoundException("Result not found with id: " + resultId));
     }
 
-    private ExamDetailsDTO getExamOrThrow(UUID examId) {
+    private ExamDTO getExamOrThrow(UUID examId) { // Changed from ExamDetailsDTO
         try {
-            ApiResponse<ExamDetailsDTO> response = examServiceClient.getExam(examId);
+            ApiResponse<ExamDTO> response = examServiceClient.getExam(examId); // Changed from ExamDetailsDTO
             if (response == null || response.getData() == null) {
                 throw new ResourceNotFoundException("Exam not found with id: " + examId);
             }
@@ -601,7 +619,7 @@ public class ResultService {
         String role = JwtUtils.getRole(auth);
         if ("ROLE_TEACHER".equals(role)) {
             UUID userId = JwtUtils.getUserId(auth);
-            ExamDetailsDTO exam = getExamOrThrow(examId);
+            ExamDTO exam = getExamOrThrow(examId); // Changed from ExamDetailsDTO
             if (!exam.getTeacherId().equals(userId)) {
                 throw new UnauthorizedException("Not authorized to access this exam's results");
             }

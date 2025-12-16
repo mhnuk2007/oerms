@@ -29,7 +29,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/actuator/**",
                                 "/api/users/health",
-                                "/api/users/public/**",
+                                "/api/profiles/public/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -40,13 +40,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/profile/**").authenticated()
 
                         // Profile write endpoints - authenticated users
-                        .requestMatchers(HttpMethod.POST, "/api/users/profile").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/users/profile").authenticated()
-                        .requestMatchers(HttpMethod.PATCH, "/api/users/profile/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/profile/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/profiles/profile").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/profiles/profile").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/profiles/profile/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/profiles/profile/**").authenticated()
 
                         // Admin only endpoints
-                        .requestMatchers("/api/users/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/profiles/admin/**").hasRole("ADMIN")
 
                         // All other requests require authentication
                         .anyRequest().authenticated()

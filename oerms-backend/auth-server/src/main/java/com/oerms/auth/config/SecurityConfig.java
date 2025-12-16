@@ -8,6 +8,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.oerms.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,11 +47,16 @@ import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.time.Duration;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+
+
 @Configuration
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig {
 
     @Value("${app.gateway-url}")
@@ -199,10 +205,11 @@ public class SecurityConfig {
         RegisteredClient m2mClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("oerms-m2m")
                 .clientSecret(encoder.encode("supersecret"))
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST) // Changed to CLIENT_SECRET_POST
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scope("read")
                 .scope("write")
+                .scope("internal")
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofHours(2))
                         .build())
@@ -238,7 +245,27 @@ public class SecurityConfig {
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer(UserRepository repo) {
         return context -> {
             if (context.getTokenType().getValue().equals("access_token")) {
-                if (context.getPrincipal() != null) {
+
+                // Check if this is a client_credentials grant (M2M)
+                if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+                    // For M2M tokens, add scope-based authorities
+                    Set<String> scopes = context.getAuthorizedScopes();
+
+                    // Add scopes as authorities with SCOPE_ prefix
+                    List<String> authorities = scopes.stream()
+                            .map(scope -> "SCOPE_" + scope)
+                            .collect(Collectors.toList());
+
+                    context.getClaims()
+                            .claim("client_id", context.getRegisteredClient().getClientId())
+                            .claim("authorities", authorities)
+                            .claim("scope", String.join(" ", scopes));
+
+                    log.debug("M2M token issued for client: {} with scopes: {}",
+                            context.getRegisteredClient().getClientId(), scopes);
+
+                } else if (context.getPrincipal() != null) {
+                    // For user tokens (authorization_code, password, etc.)
                     String principalName = context.getPrincipal().getName();
 
                     repo.findByEmail(principalName)

@@ -68,10 +68,21 @@ server:
 
 eureka:
   client:
+    register-with-eureka: true
+    fetch-registry: true
     service-url:
-      defaultZone: http://eureka:eureka123@localhost:8761/eureka/
+      defaultZone: http://localhost:8761/eureka/
+
   instance:
     prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+    home-page-url: http://localhost:${server.port}/
+    status-page-url: http://localhost:${server.port}/actuator/info
+    health-check-url: http://localhost:${server.port}/actuator/health
 
 management:
   endpoints:
@@ -91,7 +102,7 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
-# Kafka Topics
+
 kafka:
   topics:
     exam-created: exam-created-topic
@@ -102,13 +113,13 @@ kafka:
     user-registered: user-registered-topic
     password-reset: password-reset-topic
 
-# Notification Settings
+
 notification:
   email-enabled: true
   sms-enabled: false  # Enable after Twilio integration
   push-enabled: true
 
-# Feign Clients
+
 feign:
   client:
     config:
@@ -116,13 +127,13 @@ feign:
         connectTimeout: 5000
         readTimeout: 5000
 
-# Twilio SMS (Optional)
+
 twilio:
   account-sid: ${TWILIO_ACCOUNT_SID:}
   auth-token: ${TWILIO_AUTH_TOKEN:}
   from-number: ${TWILIO_FROM_NUMBER:+1234567890}
 
-# SpringDoc UI
+
 springdoc:
   api-docs:
     path: /v3/api-docs

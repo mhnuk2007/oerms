@@ -20,10 +20,13 @@ public interface ResultRepository extends JpaRepository<Result, UUID> {
     
     Page<Result> findByStudentId(UUID studentId, Pageable pageable);
     List<Result> findByStudentIdAndStatus(UUID studentId, ResultStatus status);
+    long countByStudentIdAndStatus(UUID studentId, ResultStatus status);
     
     Page<Result> findByExamId(UUID examId, Pageable pageable);
     List<Result> findByExamIdAndStatus(UUID examId, ResultStatus status);
     List<Result> findAllByExamId(UUID examId);
+    
+    Page<Result> findByStudentIdAndExamId(UUID studentId, UUID examId, Pageable pageable); // Added missing method
     
     Page<Result> findByStatus(ResultStatus status, Pageable pageable);
     

@@ -9,17 +9,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-/**
- * Feign client for Exam Service
- * All endpoints are verified to exist in exam-service
- */
 @FeignClient(name = "exam-service", path = "/api/exams", configuration = FeignClientConfig.class)
 public interface ExamServiceClient {
 
-    /**
-     * Get exam details by ID
-     * Maps to: GET /api/exams/{id}
-     */
     @GetMapping("/{id}")
     ApiResponse<ExamDTO> getExam(@PathVariable("id") UUID examId);
 }

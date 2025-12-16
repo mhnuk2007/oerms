@@ -18,6 +18,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true) // Added to address equals/hashCode warning
 public class Result extends BaseEntity {
     
     @Column(name = "attempt_id", nullable = false, unique = true)
@@ -75,7 +76,7 @@ public class Result extends BaseEntity {
     private Integer unanswered;
     
     @Column(name = "time_taken_seconds")
-    private Integer timeTakenSeconds;
+    private Long timeTakenSeconds;
     
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
@@ -91,12 +92,18 @@ public class Result extends BaseEntity {
     
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
+
+    @Column(name = "published_by")
+    private UUID publishedBy;
     
-    @Column(name = "teacher_feedback", length = 2000)
-    private String teacherFeedback;
+    @Column(name = "teacher_comments", length = 2000)
+    private String teacherComments;
     
-    @Column(name = "teacher_remarks", length = 1000)
-    private String teacherRemarks;
+    @Column(name = "attempt_number")
+    private Integer attemptNumber;
+    
+    @Column(name = "auto_submitted")
+    private Boolean autoSubmitted;
     
     @Column(name = "auto_graded")
     @Builder.Default

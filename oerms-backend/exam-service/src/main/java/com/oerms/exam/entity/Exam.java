@@ -3,7 +3,7 @@
 package com.oerms.exam.entity;
 
 import com.oerms.common.entity.BaseEntity;
-import com.oerms.common.enums.ExamStatus;
+import com.oerms.exam.enums.ExamStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

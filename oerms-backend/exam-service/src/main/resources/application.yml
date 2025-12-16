@@ -86,12 +86,35 @@ spring:
       client:
         config:
           default:
-            connectTimeout: 5000
-            readTimeout: 10000
+            connectTimeout: 10000
+            readTimeout: 30000
+            loggerLevel: full
+
+          attempt-service:
+            connectTimeout: 10000
+            readTimeout: 45000
+            loggerLevel: full
+
+          question-service:
+            connectTimeout: 10000
+            readTimeout: 20000
             loggerLevel: full
       circuitbreaker:
         enabled: true
         alphanumeric-ids:
+          enabled: true
+
+      httpclient:
+        enabled: true
+        max-connections: 200
+        max-connections-per-route: 50
+
+      compression:
+        request:
+          enabled: true
+          mime-types: text/xml,application/xml,application/json
+          min-request-size: 2048
+        response:
           enabled: true
 
   task:
@@ -121,28 +144,22 @@ server:
 
 eureka:
   client:
+    register-with-eureka: true
+    fetch-registry: true
     service-url:
-      defaultZone: http://eureka:eureka123@localhost:8761/eureka/
-    registry-fetch-interval-seconds: 30
-    healthcheck:
-      enabled: true
+      defaultZone: http://localhost:8761/eureka/
+
   instance:
-    # CRITICAL: Use localhost for local development
-    hostname: localhost
-    # Use IP address instead of hostname
-    prefer-ip-address: false
-    # Use localhost in instance ID
+    prefer-ip-address: true
     instance-id: ${spring.application.name}:${server.port}
-    # Health check configuration
+
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
-    # Explicitly set the home page URL
+
     home-page-url: http://localhost:${server.port}/
     status-page-url: http://localhost:${server.port}/actuator/info
     health-check-url: http://localhost:${server.port}/actuator/health
-    metadata-map:
-      management:
-        context-path: /actuator
+
 
 management:
   endpoints:
@@ -169,7 +186,13 @@ management:
     kafka:
       enabled: true
 
-# Application specific properties
+service:
+  urls:
+    attempt-service: http://localhost:9004
+    question-service: http://localhost:9003
+    user-service: http://localhost:9001
+    auth-server: http://localhost:9000
+
 exam:
   scheduler:
     auto-complete:
@@ -191,58 +214,86 @@ exam:
       cron: "0 0 3 * * *" # Daily at 3 AM
       days-threshold: 30
 
-# ============================================================================
-# LOGGING CONFIGURATION - OPTIMIZED FOR DEBUGGING
-# ============================================================================
+resilience4j:
+  circuitbreaker:
+    instances:
+      attemptService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      questionService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+
+  retry:
+    instances:
+      attemptService:
+        maxAttempts: 1  # Don't retry attempt creation to avoid duplicates
+        waitDuration: 1000
+      questionService:
+        maxAttempts: 3
+        waitDuration: 500
+        exponentialBackoffMultiplier: 2
+
+  timelimiter:
+    instances:
+      attemptService:
+        timeoutDuration: 45s
+      questionService:
+        timeoutDuration: 20s
+
 logging:
   level:
-    # Root level - keep at INFO to avoid noise
     root: INFO
 
-    # === YOUR APPLICATION LOGS ===
     com.oerms.exam: DEBUG
+    com.oerms.exam.client: DEBUG
+    com.oerms.exam.config: DEBUG
 
-    # === HTTP REQUEST/RESPONSE LOGGING ===
     org.springframework.web: DEBUG
     org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: DEBUG
     org.springframework.web.servlet.DispatcherServlet: DEBUG
 
-    # === SECURITY & JWT LOGGING ===
+
     org.springframework.security: DEBUG
     org.springframework.security.web: DEBUG
     org.springframework.security.oauth2: DEBUG
 
-    # === CACHE LOGGING ===
     org.springframework.cache: DEBUG
 
-    # === FEIGN CLIENT LOGGING (if using) ===
     feign: DEBUG
+    feign.Logger: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
 
-    # === DATABASE - Only when needed ===
-    # org.hibernate.SQL: DEBUG
-    # org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    io.github.resilience4j: DEBUG
 
-    # === SILENCE NOISY LOGGERS ===
-    # Eureka resolver messages
     com.netflix.discovery: WARN
     com.netflix.discovery.shared.resolver.aws.ConfigClusterResolver: ERROR
 
-    # Redis connection pool
     org.springframework.data.redis: INFO
     io.lettuce.core: WARN
 
-    # Kafka
     org.springframework.kafka: WARN
     org.apache.kafka: WARN
 
-    # Hikari connection pool
     com.zaxxer.hikari: WARN
 
-    # Spring Cloud
-    org.springframework.cloud: WARN
+    org.springframework.cloud: INFO
+    org.springframework.cloud.netflix.eureka: INFO
 
-    # HTTP client
     org.apache.http: WARN
+    org.apache.http.wire: WARN
 
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

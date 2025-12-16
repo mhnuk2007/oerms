@@ -1,12 +1,8 @@
 package com.oerms.exam.controller;
 
+import com.oerms.exam.dto.*;
 import com.oerms.common.dto.ApiResponse;
-import com.oerms.common.dto.CreateExamRequest;
-import com.oerms.common.dto.ExamDTO;
 import com.oerms.common.dto.PageResponse;
-import com.oerms.common.dto.UpdateExamRequest;
-import com.oerms.exam.dto.ExamStatisticsDTO;
-import com.oerms.exam.dto.ExamWithQuestionsDTO;
 import com.oerms.exam.service.ExamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -49,7 +45,7 @@ public class ExamController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'TEACHER', 'ADMIN') or hasAuthority('SCOPE_internal')")
     @Operation(summary = "Get exam by ID", description = "Retrieves a single exam by its ID")
     public ResponseEntity<ApiResponse<ExamDTO>> getExam(
             @Parameter(description = "Exam ID") @PathVariable UUID id) {
@@ -63,7 +59,7 @@ public class ExamController {
     public ResponseEntity<ApiResponse<ExamWithQuestionsDTO>> getExamWithQuestions(
             @Parameter(description = "Exam ID") @PathVariable UUID id,
             Authentication authentication) {
-        
+
         ExamWithQuestionsDTO examWithQuestions = examService.getExamWithQuestions(id, authentication);
         return ResponseEntity.ok(ApiResponse.success("Exam with questions retrieved successfully", examWithQuestions));
     }
@@ -144,34 +140,34 @@ public class ExamController {
     public ResponseEntity<ApiResponse<Boolean>> validateExamForPublish(
             @Parameter(description = "Exam ID") @PathVariable UUID id,
             Authentication authentication) {
-        
+
         Boolean isValid = examService.validateExamForPublish(id, authentication);
         return ResponseEntity.ok(ApiResponse.success("Exam validation completed", isValid));
     }
 
     // ==================== Student Exam Operations ====================
 
-//    @PostMapping("/{id}/start")
-//    @PreAuthorize("hasRole('STUDENT')")
-//    @Operation(summary = "Start exam", description = "Student starts taking an exam")
-//    public ResponseEntity<ApiResponse<ExamDTO>> startExam(
-//            @Parameter(description = "Exam ID") @PathVariable UUID id,
-//            Authentication authentication) {
-//
-//        ExamDTO exam = examService.startExam(id, authentication);
-//        return ResponseEntity.ok(ApiResponse.success("Exam started successfully", exam));
-//    }
-//
-//    @PostMapping("/{id}/complete")
-//    @PreAuthorize("hasRole('STUDENT')")
-//    @Operation(summary = "Complete exam", description = "Student completes an exam")
-//    public ResponseEntity<ApiResponse<Void>> completeExam(
-//            @Parameter(description = "Exam ID") @PathVariable UUID id,
-//            Authentication authentication) {
-//
-//        examService.completeExam(id, authentication);
-//        return ResponseEntity.ok(ApiResponse.success("Exam completed successfully", null));
-//    }
+    @PostMapping("/{id}/start")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Start exam", description = "Student starts taking an exam and creates an attempt")
+    public ResponseEntity<ApiResponse<ExamStartResponse>> startExam(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            Authentication authentication) {
+
+        ExamStartResponse response = examService.startExam(id, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Exam started successfully", response));
+    }
+
+    @PostMapping("/{id}/complete")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Complete exam", description = "Student completes an exam")
+    public ResponseEntity<ApiResponse<Void>> completeExam(
+            @Parameter(description = "Exam ID") @PathVariable UUID id,
+            Authentication authentication) {
+
+        examService.completeExam(id, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Exam completed successfully", null));
+    }
 
     // ==================== Query Operations ====================
 

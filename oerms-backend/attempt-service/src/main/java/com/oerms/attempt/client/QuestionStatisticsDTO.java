@@ -5,10 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO containing statistics about questions in an exam
- * Used by both question-service and exam-service
- */
 @Data
 @Builder
 @NoArgsConstructor

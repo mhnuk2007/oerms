@@ -1,23 +1,22 @@
 package com.oerms.exam.service;
 
 import com.oerms.common.dto.ApiResponse;
-import com.oerms.common.dto.CreateExamRequest;
-import com.oerms.common.dto.ExamDTO;
+import com.oerms.common.dto.AttemptResponse;
 import com.oerms.common.dto.PageResponse;
-import com.oerms.common.dto.UpdateExamRequest;
+import com.oerms.common.dto.StartAttemptRequest;
+import com.oerms.exam.client.TeacherQuestionServiceClient;
+import com.oerms.exam.dto.*;
 import com.oerms.common.exception.BadRequestException;
 import com.oerms.common.exception.ResourceNotFoundException;
+import com.oerms.common.exception.ServiceException;
 import com.oerms.common.exception.UnauthorizedException;
 import com.oerms.common.util.JwtUtils;
-import com.oerms.exam.client.QuestionServiceClient;
-import com.oerms.exam.dto.ExamStatisticsDTO;
-import com.oerms.exam.dto.ExamWithQuestionsDTO;
-import com.oerms.exam.dto.QuestionResponse;
-import com.oerms.exam.dto.QuestionStatisticsDTO;
+import com.oerms.exam.client.AttemptServiceClient;
 import com.oerms.exam.entity.Exam;
-import com.oerms.common.enums.ExamStatus;
+import com.oerms.exam.enums.ExamStatus;
 import com.oerms.exam.mapper.ExamMapper;
 import com.oerms.exam.repository.ExamRepository;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -42,7 +42,8 @@ public class ExamService {
     private final ExamRepository examRepository;
     private final ExamMapper examMapper;
     private final ExamEventPublisher eventPublisher;
-    private final QuestionServiceClient questionServiceClient;
+    private final TeacherQuestionServiceClient teacherQuestionServiceClient;
+    private final AttemptServiceClient attemptServiceClient;
 
     // Inject self to enable AOP proxy for internal calls to @Cacheable methods
     private ExamService self;
@@ -106,8 +107,8 @@ public class ExamService {
         verifyExamOwnership(exam, authentication);
 
         try {
-            ApiResponse<List<QuestionResponse>> questionResponse = questionServiceClient.getExamQuestions(examId);
-            ApiResponse<QuestionStatisticsDTO> statsResponse = questionServiceClient.getExamStatistics(examId);
+            ApiResponse<List<QuestionResponse>> questionResponse = teacherQuestionServiceClient.getExamQuestions(examId);
+            ApiResponse<QuestionStatisticsDTO> statsResponse = teacherQuestionServiceClient.getExamStatistics(examId);
 
             List<QuestionResponse> questions = extractQuestions(questionResponse, examId);
             QuestionStatisticsDTO statistics = extractStatistics(statsResponse);
@@ -203,7 +204,7 @@ public class ExamService {
         }
 
         try {
-            ApiResponse<Long> response = questionServiceClient.getQuestionCount(examId);
+            ApiResponse<Long> response = teacherQuestionServiceClient.getQuestionCount(examId);
             boolean hasQuestions = response != null && response.getData() != null && response.getData() > 0;
             log.info("Exam {} validation - has questions: {}", examId, hasQuestions);
             return hasQuestions;
@@ -216,7 +217,7 @@ public class ExamService {
     // ---------------- Get Exam Question Count ----------------
     public Long getExamQuestionCount(UUID examId) {
         try {
-            ApiResponse<Long> response = questionServiceClient.getQuestionCount(examId);
+            ApiResponse<Long> response = teacherQuestionServiceClient.getQuestionCount(examId);
             return (response != null && response.getData() != null) ? response.getData() : 0L;
         } catch (Exception e) {
             log.error("Failed to get question count for exam: {}", examId, e);
@@ -284,26 +285,48 @@ public class ExamService {
 
     // ---------------- Start Exam (Student) ----------------
     @Transactional
-    public ExamDTO startExam(UUID examId, Authentication authentication) {
+    public ExamStartResponse startExam(UUID examId, Authentication authentication) {
         Exam exam = findExamById(examId);
         UUID studentId = JwtUtils.getUserId(authentication);
 
-        if (exam.getStatus() != ExamStatus.PUBLISHED) {
-            throw new BadRequestException("Exam is not available for taking");
-        }
+        log.info("Starting exam {} for student {}", examId, studentId);
 
-        LocalDateTime now = LocalDateTime.now();
-        if (exam.getStartTime() != null && now.isBefore(exam.getStartTime())) {
-            throw new BadRequestException("Exam has not started yet");
-        }
-        if (exam.getEndTime() != null && now.isAfter(exam.getEndTime())) {
-            throw new BadRequestException("Exam has already ended");
-        }
+        validateExamIsStartable(exam);
 
-        eventPublisher.publishExamStarted(exam, studentId);
-        log.info("Exam started: {} by student: {}", examId, studentId);
-        
-        return examMapper.toDTO(exam);
+        try {
+            AttemptResponse attempt = createExamAttempt(examId);
+            log.info("Successfully created attempt {} for exam {} by student {}", attempt.getId(), examId, studentId);
+
+            eventPublisher.publishExamStarted(exam, studentId);
+
+            return ExamStartResponse.builder()
+                    .exam(examMapper.toDTO(exam))
+                    .attempt(attempt)
+                    .build();
+        } catch (FeignException e) {
+            throw handleStartAttemptFeignException(e, examId);
+        } catch (Exception e) {
+            log.error("Unexpected error starting exam {}: {}", examId, e.getMessage(), e);
+            throw new ServiceException("An unexpected error occurred while starting the exam");
+        }
+    }
+
+    private AttemptResponse createExamAttempt(UUID examId) {
+        log.debug("Calling attempt service to create attempt for exam {}", examId);
+        StartAttemptRequest attemptRequest = new StartAttemptRequest();
+        attemptRequest.setExamId(examId);
+        ApiResponse<AttemptResponse> attemptResponse = attemptServiceClient.startAttempt(attemptRequest);
+
+        return Optional.ofNullable(attemptResponse)
+                .filter(ApiResponse::isSuccess)
+                .map(ApiResponse::getData)
+                .orElseThrow(() -> {
+                    String errorMsg = Optional.ofNullable(attemptResponse)
+                                            .map(ApiResponse::getMessage)
+                                            .orElse("Unknown error");
+                    log.error("Attempt service returned error for exam {}: {}", examId, errorMsg);
+                    return new ServiceException("Failed to create exam attempt: " + errorMsg);
+                });
     }
 
     // ---------------- Complete Exam (Student) ----------------
@@ -371,14 +394,13 @@ public class ExamService {
         verifyExamOwnership(exam, authentication);
 
         try {
-            ApiResponse<QuestionStatisticsDTO> response = questionServiceClient.getExamStatistics(examId);
+            ApiResponse<QuestionStatisticsDTO> response = teacherQuestionServiceClient.getExamStatistics(examId);
 
-            if (response != null && response.isSuccess() && response.getData() != null) {
-                QuestionStatisticsDTO questionStats = response.getData();
-                return buildExamStatistics(exam, questionStats);
-            }
-
-            return buildEmptyExamStatistics(exam);
+            return Optional.ofNullable(response)
+                    .filter(ApiResponse::isSuccess)
+                    .map(ApiResponse::getData)
+                    .map(stats -> buildExamStatistics(exam, stats))
+                    .orElseGet(() -> buildEmptyExamStatistics(exam));
 
         } catch (Exception e) {
             log.error("Failed to fetch exam statistics: {}", examId, e);
@@ -387,6 +409,43 @@ public class ExamService {
     }
 
     // ---------------- Helper Methods ----------------
+
+    private RuntimeException handleStartAttemptFeignException(FeignException e, UUID examId) {
+        log.error("Feign error during start of exam {}: Status={}, Body={}", examId, e.status(), e.contentUTF8(), e);
+        if (e instanceof FeignException.Unauthorized) {
+            return new UnauthorizedException("Not authorized to start this exam");
+        }
+        if (e instanceof FeignException.BadRequest) {
+            String errorMsg = e.contentUTF8() != null && !e.contentUTF8().isBlank()
+                    ? e.contentUTF8()
+                    : "Invalid request to start exam";
+            return new BadRequestException(errorMsg);
+        }
+        if (e instanceof FeignException.ServiceUnavailable) {
+            return new ServiceException("Exam attempt service is temporarily unavailable. Please try again.");
+        }
+        return new ServiceException("Failed to start exam attempt. Please try again later.");
+    }
+
+    private void validateExamIsStartable(Exam exam) {
+        if (exam.getStatus() != ExamStatus.PUBLISHED) {
+            log.warn("Exam {} is not published. Current status: {}", exam.getId(), exam.getStatus());
+            throw new BadRequestException("Exam is not available for taking. Status: " + exam.getStatus());
+        }
+        if (!Boolean.TRUE.equals(exam.getIsActive())) {
+            log.warn("Exam {} is not active", exam.getId());
+            throw new BadRequestException("Exam is not active");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (exam.getStartTime() != null && now.isBefore(exam.getStartTime())) {
+            log.warn("Exam {} has not started yet. Starts at: {}", exam.getId(), exam.getStartTime());
+            throw new BadRequestException("Exam has not started yet. Starts at: " + exam.getStartTime());
+        }
+        if (exam.getEndTime() != null && now.isAfter(exam.getEndTime())) {
+            log.warn("Exam {} has ended. Ended at: {}", exam.getId(), exam.getEndTime());
+            throw new BadRequestException("Exam has ended. Ended at: " + exam.getEndTime());
+        }
+    }
 
     private Exam findExamById(UUID examId) {
         return examRepository.findById(examId)
@@ -424,7 +483,7 @@ public class ExamService {
 
     private void validateExamHasQuestions(UUID examId) {
         try {
-            ApiResponse<Long> response = questionServiceClient.getQuestionCount(examId);
+            ApiResponse<Long> response = teacherQuestionServiceClient.getQuestionCount(examId);
             if (response == null || response.getData() == null || response.getData() == 0) {
                 throw new BadRequestException("Cannot publish an exam with no questions");
             }
@@ -465,16 +524,16 @@ public class ExamService {
         return ExamStatisticsDTO.builder()
                 .examId(exam.getId())
                 .examTitle(exam.getTitle())
-                .totalQuestions(questionStats.getTotalQuestions())
-                .totalMarks(questionStats.getTotalMarks())
-                .mcqCount(questionStats.getMcqCount())
-                .trueFalseCount(questionStats.getTrueFalseCount())
-                .shortAnswerCount(questionStats.getShortAnswerCount())
-                .essayCount(questionStats.getEssayCount())
-                .easyCount(questionStats.getEasyCount())
-                .mediumCount(questionStats.getMediumCount())
-                .hardCount(questionStats.getHardCount())
-                .status(exam.getStatus().name())
+                .totalQuestions(Optional.ofNullable(questionStats.getTotalQuestions()).orElse(0L))
+                .totalMarks(Optional.ofNullable(questionStats.getTotalMarks()).orElse(0))
+                .mcqCount(Optional.ofNullable(questionStats.getMcqCount()).orElse(0L))
+                .trueFalseCount(Optional.ofNullable(questionStats.getTrueFalseCount()).orElse(0L))
+                .shortAnswerCount(Optional.ofNullable(questionStats.getShortAnswerCount()).orElse(0L))
+                .essayCount(Optional.ofNullable(questionStats.getEssayCount()).orElse(0L))
+                .easyCount(Optional.ofNullable(questionStats.getEasyCount()).orElse(0L))
+                .mediumCount(Optional.ofNullable(questionStats.getMediumCount()).orElse(0L))
+                .hardCount(Optional.ofNullable(questionStats.getHardCount()).orElse(0L))
+                .status(exam.getStatus() != null ? exam.getStatus().name() : null)
                 .build();
     }
 

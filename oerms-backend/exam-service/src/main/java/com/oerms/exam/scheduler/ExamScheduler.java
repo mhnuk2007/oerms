@@ -1,7 +1,7 @@
 package com.oerms.exam.scheduler;
 
 import com.oerms.exam.entity.Exam;
-import com.oerms.common.enums.ExamStatus;
+import com.oerms.exam.enums.ExamStatus;
 import com.oerms.exam.repository.ExamRepository;
 import com.oerms.exam.service.ExamEventPublisher;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +22,7 @@ public class ExamScheduler {
     private final ExamRepository examRepository;
     private final ExamEventPublisher eventPublisher;
 
-    /**
-     * Auto-complete expired exams
-     * Runs every 5 minutes
-     */
+
     @Scheduled(fixedRate = 300000) // 5 minutes
     @Transactional
     public void autoCompleteExpiredExams() {
@@ -53,10 +50,6 @@ public class ExamScheduler {
         log.info("Auto-completed {} expired exams", expiredExams.size());
     }
 
-    /**
-     * Send exam reminders for upcoming exams
-     * Runs every hour
-     */
     @Scheduled(fixedRate = 3600000) // 1 hour
     @Transactional(readOnly = true)
     public void sendExamReminders() {
@@ -87,10 +80,7 @@ public class ExamScheduler {
         log.info("Sent reminders for {} upcoming exams", upcomingExams.size());
     }
 
-    /**
-     * Auto-start scheduled exams
-     * Runs every minute
-     */
+
     @Scheduled(fixedRate = 60000) // 1 minute
     @Transactional
     public void autoStartScheduledExams() {
@@ -118,10 +108,6 @@ public class ExamScheduler {
         log.info("Auto-started {} scheduled exams", examsToStart.size());
     }
 
-    /**
-     * Archive old completed exams
-     * Runs daily at 2 AM
-     */
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
     public void archiveOldCompletedExams() {
@@ -152,10 +138,6 @@ public class ExamScheduler {
         log.info("Archived {} old completed exams", oldCompletedExams.size());
     }
 
-    /**
-     * Clean up cancelled exams older than 30 days
-     * Runs daily at 3 AM
-     */
     @Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void cleanupOldCancelledExams() {

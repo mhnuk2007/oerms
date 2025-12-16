@@ -1,5 +1,6 @@
 package com.oerms.attempt.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.oerms.attempt.enums.AttemptStatus;
 import lombok.*;
@@ -34,7 +35,9 @@ public class AttemptResponse {
     private Double percentage;
     private Boolean passed;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
     private LocalDateTime startedAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
     private LocalDateTime submittedAt;
     private Integer timeTakenSeconds;
     private Integer remainingTimeSeconds;

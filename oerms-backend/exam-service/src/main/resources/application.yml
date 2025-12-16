@@ -142,6 +142,11 @@ server:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain
 
+auth:
+  token-uri: http://localhost:9000/oauth2/token
+  client-id: oerms-m2m
+  client-secret: supersecret
+
 eureka:
   client:
     register-with-eureka: true
@@ -217,7 +222,7 @@ exam:
 resilience4j:
   circuitbreaker:
     instances:
-      attemptService:
+      AttemptServiceClient#startAttempt(StartAttemptRequest):
         registerHealthIndicator: true
         slidingWindowSize: 10
         minimumNumberOfCalls: 5
@@ -238,7 +243,7 @@ resilience4j:
 
   retry:
     instances:
-      attemptService:
+      AttemptServiceClient#startAttempt(StartAttemptRequest):
         maxAttempts: 1  # Don't retry attempt creation to avoid duplicates
         waitDuration: 1000
       questionService:
@@ -248,7 +253,7 @@ resilience4j:
 
   timelimiter:
     instances:
-      attemptService:
+      AttemptServiceClient#startAttempt(StartAttemptRequest):
         timeoutDuration: 45s
       questionService:
         timeoutDuration: 20s

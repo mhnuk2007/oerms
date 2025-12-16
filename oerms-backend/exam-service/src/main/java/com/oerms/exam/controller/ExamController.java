@@ -36,7 +36,6 @@ public class ExamController {
     public ResponseEntity<ApiResponse<ExamDTO>> createExam(
             @Valid @RequestBody CreateExamRequest request,
             Authentication authentication) {
-
         ExamDTO exam = examService.createExam(request, authentication);
         return new ResponseEntity<>(
                 ApiResponse.success("Exam created successfully", exam),
@@ -153,7 +152,7 @@ public class ExamController {
     public ResponseEntity<ApiResponse<ExamStartResponse>> startExam(
             @Parameter(description = "Exam ID") @PathVariable UUID id,
             Authentication authentication) {
-
+        System.out.println("Start Exam request received in controller by" + authentication.getName());
         ExamStartResponse response = examService.startExam(id, authentication);
         return ResponseEntity.ok(ApiResponse.success("Exam started successfully", response));
     }

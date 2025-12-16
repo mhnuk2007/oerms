@@ -289,6 +289,8 @@ public class ExamService {
         Exam exam = findExamById(examId);
         UUID studentId = JwtUtils.getUserId(authentication);
 
+        System.out.println("Start Exam request received in service by" + authentication.getName());
+
         log.info("Starting exam {} for student {}", examId, studentId);
 
         validateExamIsStartable(exam);

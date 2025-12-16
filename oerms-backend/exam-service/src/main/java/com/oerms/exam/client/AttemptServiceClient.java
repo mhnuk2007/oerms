@@ -10,8 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
     name = "attempt-service", 
-    path = "/api/attempts",
-    configuration = FeignClientConfig.class  // ADD THIS LINE
+    path = "/api/attempts"
 )
 public interface AttemptServiceClient {
 

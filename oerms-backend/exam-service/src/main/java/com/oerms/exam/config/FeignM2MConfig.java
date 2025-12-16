@@ -3,8 +3,8 @@ package com.oerms.exam.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import feign.RequestInterceptor;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value; // ← CORRECT IMPORT
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpEntity;
@@ -18,14 +18,16 @@ import java.time.Instant;
 
 @Configuration
 @Slf4j
-@RequiredArgsConstructor
 public class FeignM2MConfig {
 
-    // NOTE: These values are hardcoded. For a production environment, it's recommended
-    // to externalize these properties into application.yml or application.properties.
-    private final String tokenUri = "http://auth-server:8080/oauth2/token";
-    private final String clientId = "oerms-m2m";
-    private final String clientSecret = "supersecret";
+    @Value("${auth.token-uri}")  // Now using Spring's @Value
+    private String tokenUri;
+
+    @Value("${auth.client-id}")
+    private String clientId;
+
+    @Value("${auth.client-secret}")
+    private String clientSecret;
 
     private M2MToken m2mToken;
 
@@ -38,9 +40,9 @@ public class FeignM2MConfig {
             }
             if (m2mToken != null) {
                 requestTemplate.header("Authorization", "Bearer " + m2mToken.getAccessToken());
+                log.debug("Added M2M token to request for: {}", requestTemplate.feignTarget().name());
             } else {
                 log.error("Failed to add M2M token to request, as the token is null.");
-                // Depending on the desired behavior, you could throw an exception here
             }
         };
     }
@@ -60,13 +62,16 @@ public class FeignM2MConfig {
         HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
 
         try {
+            log.debug("Fetching M2M token from: {}", tokenUri);
             TokenResponse response = restTemplate.postForObject(tokenUri, entity, TokenResponse.class);
-            if (response != null) {
-                log.info("Successfully fetched new M2M token.");
+            if (response != null && response.getAccessToken() != null) {
+                log.info("Successfully fetched new M2M token. Expires in: {} seconds", response.getExpiresIn());
                 return new M2MToken(response.getAccessToken(), response.getExpiresIn());
+            } else {
+                log.error("M2M token response was null or missing access token");
             }
         } catch (Exception e) {
-            log.error("Failed to fetch M2M token from {}: {}", tokenUri, e.getMessage());
+            log.error("Failed to fetch M2M token from {}: {}", tokenUri, e.getMessage(), e);
         }
         return null;
     }

@@ -1,5 +1,6 @@
 package com.oerms.common.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,7 @@ public class AttemptAnswerResponse {
     private Integer questionOrder;
     private Set<String> selectedOptions; // Changed type from UUID to String
     private String answerText;
+    @JsonProperty("correct")
     private Boolean isCorrect;
     private Double marksObtained;
     private Integer marksAllocated;

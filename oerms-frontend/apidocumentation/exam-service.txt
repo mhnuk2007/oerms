@@ -1,0 +1,1697 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OERMS Exam Service API",
+    "description": "API documentation for Exam Management Service",
+    "contact": {
+      "name": "OERMS Team",
+      "email": "support@oerms.com"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:9002",
+      "description": "Direct Access"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Via API Gateway"
+    }
+  ],
+  "security": [
+    {
+      "Bearer Authentication": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Exam Management",
+      "description": "APIs for managing exams"
+    }
+  ],
+  "paths": {
+    "/api/exams/{id}": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get exam by ID",
+        "description": "Retrieves a single exam by its ID",
+        "operationId": "getExam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Update exam",
+        "description": "Updates an existing exam (only DRAFT exams can be updated)",
+        "operationId": "updateExam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Delete exam",
+        "description": "Deletes an exam (only DRAFT exams can be deleted)",
+        "operationId": "deleteExam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams": {
+      "post": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Create a new exam",
+        "description": "Creates a new exam in DRAFT status",
+        "operationId": "createExam",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/unpublish": {
+      "post": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Unpublish exam",
+        "description": "Unpublishes an exam (returns it to DRAFT status)",
+        "operationId": "unpublishExam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/start": {
+      "post": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Start exam",
+        "description": "Student starts taking an exam and creates an attempt",
+        "operationId": "startExam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamStartResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/publish": {
+      "post": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Publish exam",
+        "description": "Publishes an exam (makes it available to students)",
+        "operationId": "publishExam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/complete": {
+      "post": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Complete exam",
+        "description": "Student completes an exam",
+        "operationId": "completeExam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Cancel exam",
+        "description": "Cancels a published exam with a reason",
+        "operationId": "cancelExam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Cancellation reason",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/archive": {
+      "post": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Archive exam",
+        "description": "Archives an exam (marks it as inactive)",
+        "operationId": "archiveExam",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/with-questions": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get exam with questions",
+        "description": "Retrieves an exam with all its questions and statistics",
+        "operationId": "getExamWithQuestions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamWithQuestionsDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/validate-publish": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Validate exam for publishing",
+        "description": "Checks if an exam is ready to be published",
+        "operationId": "validateExamForPublish",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/statistics": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get exam statistics",
+        "description": "Returns detailed statistics about an exam including question breakdown",
+        "operationId": "getExamStatistics",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamStatisticsDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/{id}/questions/count": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get question count for exam",
+        "description": "Returns the number of questions in an exam",
+        "operationId": "getExamQuestionCount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/teacher/{teacherId}": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get teacher's exams",
+        "description": "Retrieves all exams created by a specific teacher",
+        "operationId": "getTeacherExams",
+        "parameters": [
+          {
+            "name": "teacherId",
+            "in": "path",
+            "description": "Teacher ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "createdAt"
+            }
+          },
+          {
+            "name": "sortDir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "DESC"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/teacher/{teacherId}/count": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get teacher's exam count",
+        "description": "Returns the total number of exams created by a teacher",
+        "operationId": "getTeacherExamCount",
+        "parameters": [
+          {
+            "name": "teacherId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/published": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get published exams",
+        "description": "Retrieves all published and active exams",
+        "operationId": "getPublishedExams",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "createdAt"
+            }
+          },
+          {
+            "name": "sortDir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "DESC"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/published/count": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get published exam count",
+        "description": "Returns the total number of published exams",
+        "operationId": "getPublishedExamCount",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/ongoing": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get ongoing exams",
+        "description": "Retrieves exams that are currently in progress",
+        "operationId": "getOngoingExams",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/my-exams": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get current user's exams",
+        "description": "Retrieves all exams created by the current user",
+        "operationId": "getMyExams",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "createdAt"
+            }
+          },
+          {
+            "name": "sortDir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "DESC"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/my-exams/count": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get current user's exam count",
+        "description": "Returns the number of exams created by the current user",
+        "operationId": "getMyExamCount",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/all": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get all exams (Admin)",
+        "description": "Retrieves all exams in the system (admin only)",
+        "operationId": "getAllExams",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Page size",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "description": "Sort by field",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "createdAt"
+            }
+          },
+          {
+            "name": "sortDir",
+            "in": "query",
+            "description": "Sort direction",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "DESC"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/exams/active": {
+      "get": {
+        "tags": [
+          "Exam Management"
+        ],
+        "summary": "Get active exams",
+        "description": "Retrieves all currently active exams",
+        "operationId": "getActiveExams",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListExamDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/debug/token-info": {
+      "get": {
+        "tags": [
+          "token-debug-controller"
+        ],
+        "operationId": "getTokenInfo",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UpdateExamRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 3
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 600,
+            "minimum": 1
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "passingMarks": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "allowMultipleAttempts": {
+            "type": "boolean"
+          },
+          "maxAttempts": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "shuffleQuestions": {
+            "type": "boolean"
+          },
+          "showResultsImmediately": {
+            "type": "boolean"
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          }
+        }
+      },
+      "ApiResponseExamDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ExamDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ExamDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "teacherId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teacherName": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "passingMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "SCHEDULED",
+              "ONGOING",
+              "COMPLETED",
+              "CANCELLED",
+              "ARCHIVED"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "allowMultipleAttempts": {
+            "type": "boolean"
+          },
+          "maxAttempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shuffleQuestions": {
+            "type": "boolean"
+          },
+          "showResultsImmediately": {
+            "type": "boolean"
+          },
+          "instructions": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "lastModifiedBy": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateExamRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 3
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 600,
+            "minimum": 1
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "passingMarks": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "allowMultipleAttempts": {
+            "type": "boolean"
+          },
+          "maxAttempts": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "shuffleQuestions": {
+            "type": "boolean"
+          },
+          "showResultsImmediately": {
+            "type": "boolean"
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "duration",
+          "passingMarks",
+          "title",
+          "totalMarks"
+        ]
+      },
+      "ApiResponseExamStartResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ExamStartResponse"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "AttemptAnswerResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "selectedOptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "answerText": {
+            "type": "string"
+          },
+          "isCorrect": {
+            "type": "boolean"
+          },
+          "marksObtained": {
+            "type": "number",
+            "format": "double"
+          },
+          "marksAllocated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeSpentSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "flagged": {
+            "type": "boolean"
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AttemptResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examTitle": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "IN_PROGRESS",
+              "SUBMITTED",
+              "EXPIRED",
+              "EVALUATED"
+            ]
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "answeredQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "flaggedQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "obtainedMarks": {
+            "type": "number",
+            "format": "double"
+          },
+          "percentage": {
+            "type": "number",
+            "format": "double"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeTakenSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "remainingTimeSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tabSwitches": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "webcamViolations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "autoSubmitted": {
+            "type": "boolean"
+          },
+          "reviewed": {
+            "type": "boolean"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptAnswerResponse"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ExamStartResponse": {
+        "type": "object",
+        "properties": {
+          "exam": {
+            "$ref": "#/components/schemas/ExamDTO"
+          },
+          "attempt": {
+            "$ref": "#/components/schemas/AttemptResponse"
+          }
+        }
+      },
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseExamWithQuestionsDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ExamWithQuestionsDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ExamWithQuestionsDTO": {
+        "type": "object",
+        "properties": {
+          "exam": {
+            "$ref": "#/components/schemas/ExamDTO"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionResponse"
+            }
+          },
+          "questionCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "statistics": {
+            "$ref": "#/components/schemas/QuestionStatisticsDTO"
+          }
+        }
+      },
+      "QuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "questionType": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "QuestionStatisticsDTO": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mcqCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "trueFalseCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "shortAnswerCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "essayCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "easyCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mediumCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hardCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseBoolean": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "boolean"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseExamStatisticsDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ExamStatisticsDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ExamStatisticsDTO": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examTitle": {
+            "type": "string"
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mcqCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "trueFalseCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "shortAnswerCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "essayCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "easyCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mediumCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hardCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseLong": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponsePageResponseExamDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PageResponseExamDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "PageResponseExamDTO": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamDTO"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseListExamDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamDTO"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Bearer Authentication": {
+        "type": "http",
+        "description": "Enter JWT token obtained from auth-server",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

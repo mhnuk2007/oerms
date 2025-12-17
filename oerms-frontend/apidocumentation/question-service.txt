@@ -1,0 +1,1096 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OERMS Question Service API",
+    "description": "API documentation for Question Management Service",
+    "contact": {
+      "name": "OERMS Team",
+      "email": "support@oerms.com"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:9003",
+      "description": "Direct Access"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Via API Gateway"
+    }
+  ],
+  "security": [
+    {
+      "Bearer Authentication": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Question Management",
+      "description": "APIs for managing exam questions"
+    }
+  ],
+  "paths": {
+    "/api/questions/{id}": {
+      "get": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Get a single question",
+        "description": "Retrieves a question by ID",
+        "operationId": "getQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseQuestionDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Update a question",
+        "description": "Updates an existing question",
+        "operationId": "updateQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseQuestionDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Delete a question",
+        "description": "Deletes a question from an exam",
+        "operationId": "deleteQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/exam/{examId}/reorder": {
+      "put": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Reorder questions",
+        "description": "Changes the display order of questions in an exam",
+        "operationId": "reorderQuestions",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListQuestionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions": {
+      "post": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Create a new question",
+        "description": "Creates a new question for an exam",
+        "operationId": "createQuestion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseQuestionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/internal/batch": {
+      "post": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Get questions for grading",
+        "description": "Retrieves a batch of questions by their IDs for internal grading use",
+        "operationId": "getQuestionsForGrading",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListQuestionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/bulk": {
+      "post": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Bulk create questions",
+        "description": "Creates multiple questions at once",
+        "operationId": "bulkCreateQuestions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkCreateQuestionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListQuestionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/exam/{examId}": {
+      "get": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Get all questions for an exam",
+        "description": "Retrieves all questions including answers (for teachers/admins)",
+        "operationId": "getExamQuestions",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListQuestionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/exam/{examId}/validate": {
+      "get": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Validate exam questions",
+        "description": "Checks if exam has valid questions for publishing",
+        "operationId": "validateExamQuestions",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBoolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/exam/{examId}/total-marks": {
+      "get": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Get total marks",
+        "description": "Returns the sum of all question marks for an exam",
+        "operationId": "getTotalMarks",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseInteger"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/exam/{examId}/summary": {
+      "get": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Get exam questions summary",
+        "description": "Returns summary information about exam questions",
+        "operationId": "getExamQuestionsSummary",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseQuestionSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/exam/{examId}/student": {
+      "get": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Get exam questions for students",
+        "description": "Retrieves questions without answers for students",
+        "operationId": "getExamQuestionsForStudent",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "shuffle",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListStudentQuestionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/exam/{examId}/statistics": {
+      "get": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Get exam question statistics",
+        "description": "Returns detailed statistics about questions (count by type, difficulty, etc.)",
+        "operationId": "getExamStatistics",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseQuestionStatisticsDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/exam/{examId}/count": {
+      "get": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Get question count",
+        "description": "Returns the total number of questions for an exam",
+        "operationId": "getQuestionCount",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/questions/exam/{examId}/all": {
+      "delete": {
+        "tags": [
+          "Question Management"
+        ],
+        "summary": "Delete all questions for an exam",
+        "description": "Deletes all questions from an exam",
+        "operationId": "deleteAllExamQuestions",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UpdateQuestionRequest": {
+        "type": "object",
+        "properties": {
+          "questionText": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "MCQ",
+              "MULTIPLE_ANSWER",
+              "TRUE_FALSE",
+              "SHORT_ANSWER",
+              "ESSAY",
+              "FILL_BLANK",
+              "MATCHING"
+            ]
+          },
+          "marks": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "orderIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "correctAnswer": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "difficultyLevel": {
+            "type": "string",
+            "enum": [
+              "EASY",
+              "MEDIUM",
+              "HARD"
+            ]
+          },
+          "imageUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseQuestionDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/QuestionDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "QuestionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "MCQ",
+              "MULTIPLE_ANSWER",
+              "TRUE_FALSE",
+              "SHORT_ANSWER",
+              "ESSAY",
+              "FILL_BLANK",
+              "MATCHING"
+            ]
+          },
+          "marks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "orderIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "correctAnswer": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "difficultyLevel": {
+            "type": "string",
+            "enum": [
+              "EASY",
+              "MEDIUM",
+              "HARD"
+            ]
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseListQuestionDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionDTO"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateQuestionRequest": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "MCQ",
+              "MULTIPLE_ANSWER",
+              "TRUE_FALSE",
+              "SHORT_ANSWER",
+              "ESSAY",
+              "FILL_BLANK",
+              "MATCHING"
+            ]
+          },
+          "marks": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "orderIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "correctAnswer": {
+            "type": "string",
+            "minLength": 1
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "difficultyLevel": {
+            "type": "string",
+            "enum": [
+              "EASY",
+              "MEDIUM",
+              "HARD"
+            ]
+          },
+          "imageUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "correctAnswer",
+          "examId",
+          "marks",
+          "questionText",
+          "type"
+        ]
+      },
+      "BulkCreateQuestionsRequest": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateQuestionRequest"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "questions"
+        ]
+      },
+      "ApiResponseBoolean": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "boolean"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseInteger": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseQuestionSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/QuestionSummaryDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "QuestionStatisticsDTO": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mcqCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "trueFalseCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "shortAnswerCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "essayCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "easyCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mediumCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hardCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "QuestionSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "statistics": {
+            "$ref": "#/components/schemas/QuestionStatisticsDTO"
+          }
+        }
+      },
+      "ApiResponseListStudentQuestionDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentQuestionDTO"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "StudentQuestionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "MCQ",
+              "MULTIPLE_ANSWER",
+              "TRUE_FALSE",
+              "SHORT_ANSWER",
+              "ESSAY",
+              "FILL_BLANK",
+              "MATCHING"
+            ]
+          },
+          "marks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "orderIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "difficultyLevel": {
+            "type": "string",
+            "enum": [
+              "EASY",
+              "MEDIUM",
+              "HARD"
+            ]
+          },
+          "imageUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseQuestionStatisticsDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/QuestionStatisticsDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseLong": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Bearer Authentication": {
+        "type": "http",
+        "description": "Enter JWT token obtained from auth-server",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

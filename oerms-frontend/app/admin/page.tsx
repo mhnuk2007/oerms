@@ -1,12 +1,28 @@
-import RequireAuth from '../../app/components/RequireAuth';
+'use client';
 
-export default function AdminPage() {
+import { useEffect } from 'react';
+import { useRouter, redirect } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+
+export default function AdminPanel() {
+  const router = useRouter();
+  const { isAuthenticated, hasRole, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated || !hasRole('ADMIN')) {
+        router.push('/dashboard');
+      } else {
+        // Redirect to the new admin dashboard
+        router.push('/dashboard/admin');
+      }
+    }
+  }, [isLoading, isAuthenticated, hasRole, router]);
+
+  // Fallback loading state
   return (
-    <RequireAuth role="ADMIN">
-      <div className="max-w-6xl mx-auto py-10">
-        <h1 className="text-2xl font-semibold mb-4">Admin Dashboard</h1>
-        <p>Manage exams, questions, users, and notifications.</p>
-      </div>
-    </RequireAuth>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+    </div>
   );
 }

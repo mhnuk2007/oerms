@@ -1,16 +1,13 @@
-public class Main {
+public class IntExample {
     public static void main(String[] args) {
-        int a;
+        int a = 15;
+        int b = 'K';
 
-
-        String s;
-
-        float f;
-        double d;
-
-        a = 2147483647;
-
-        System.out.println(a);
-        System.out.println();
+        System.out.println(b);
+        System.out.println("Addition: " + (a + b));     // 19
+        System.out.println("Subtraction: " + (a - b));  // 11
+        System.out.println("Multiplication: " + (a * b)); // 60
+        System.out.println("Division: " + (a / b));     // 3
+        System.out.println("Remainder: " + (a % b));    // 3
     }
 }

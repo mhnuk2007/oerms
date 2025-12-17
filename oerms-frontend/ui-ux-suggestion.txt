@@ -1,0 +1,272 @@
+Just a suggestion to improve the UI/UX of the application
+
+Implement what is necessary to make the application more user-friendly and intuitive
+ignore unnecessary an inappropriate suggestions
+
+✅ 1. UI/UX Design Prompt for OERMS (Full Frontend)
+
+Prompt:
+I am building the frontend of a platform called OERMS – Online Exam & Result Management System using Next.js. Create a complete UI/UX design plan that includes:
+
+A. Global Design Requirements
+
+Clean, modern, EduTech-inspired design
+
+Consistent spacing, typography, and components
+
+Responsive layouts for mobile/tablets/desktops
+
+Dark/Light theme optional
+
+Accessibility (WCAG friendly)
+
+B. Pages to Design
+
+Generate UI/UX layout descriptions + component breakdowns + interaction notes for:
+
+1. Landing Page
+
+Hero section
+
+Feature highlight
+
+Call-to-action
+
+Testimonials
+
+Footer with links
+
+“Get Started” buttons
+
+2. About Page
+
+Mission
+
+Vision
+
+Values
+
+Platform overview timeline
+
+3. Dashboard Pages
+
+Student Dashboard
+
+Teacher Dashboard
+
+Admin Dashboard
+Each must include:
+
+Overview cards
+
+Navigation sidebar
+
+Analytics charts
+
+Action shortcuts
+
+Notifications indicator
+
+4. Exam Module
+
+Exam listing
+
+Exam instructions screen
+
+Live exam screen with timer
+
+Question navigation panel
+
+Auto-save status
+
+Submit confirmation dialog
+
+5. OMR Upload Module
+
+Upload section
+
+Progress bar
+
+OMR preview
+
+Processing status
+
+Result summary
+
+6. Results Module
+
+Student results
+
+Class-wise results
+
+Charts & analytics
+
+Printable PDF template layout
+
+7. Authentication
+
+Login
+
+Register
+
+Forgot password
+Styling should be simple, clean, modern.
+
+C. Component Library
+
+Suggest a UI component set for reusability:
+
+Buttons
+
+Cards
+
+Tables
+
+Modals
+
+Inputs
+
+Sidebar
+
+Navbar
+
+Tags/Badges
+
+Pagination
+
+Chart components
+
+Dropzone component for uploads
+
+D. Micro-interactions
+
+Generate interaction ideas:
+
+Button hover effects
+
+Smooth transitions
+
+Toast notifications
+
+Loading skeletons
+
+Auto-save animation for exam answers
+
+Animated progress bars
+
+E. Accessibility
+
+Include color contrast rules, ARIA labels, keyboard navigation, readable font sizes.
+
+Output Format
+
+Provide:
+
+Page-by-page design descriptions
+
+Component list
+
+Color usage
+
+Typography usage
+
+Animation guidelines
+
+UX flow diagrams (described in text)
+
+✅ 2. Brand Tone Prompt
+
+Prompt:
+Create a brand tone/voice guide for OERMS – Online Exam & Result Management System. The tone must be:
+
+Professional
+
+Trustworthy
+
+Student-friendly
+
+Institution-focused
+
+Clear and friendly
+
+Helpful, not overly technical
+
+Include:
+
+Tone pillars
+
+Do’s and Don’ts
+
+Sample sentences
+
+How to write error messages
+
+How to write success messages
+
+How to write onboarding text
+
+Style rules (punctuation, sentence length, voice)
+
+✅ 3. Color Palette Prompt
+
+Prompt:
+Generate 5 modern color palette options suitable for an EdTech platform named OERMS.
+
+Each palette must include:
+
+Primary color
+
+Secondary color
+
+Accent color
+
+Background color
+
+Surface color
+
+Success, warning, error colors
+
+Suggested gradient
+
+Example usage (e.g., buttons, backgrounds, cards)
+
+Style:
+
+Clean
+
+Professional
+
+Accessible
+
+High-contrast
+
+Harmonious
+
+Works well for dashboards and exam interfaces
+
+Also include dark/light theme variations.
+
+✅ 4. Typography Prompt
+
+Prompt:
+Suggest typography guidelines for the OERMS frontend.
+
+Include:
+
+Primary and secondary font choices
+
+Heading sizes (H1–H6)
+
+Body text sizes
+
+Line-height standards
+
+Letter spacing
+
+Button text style
+
+Table text style
+
+Readability rules
+
+Mobile responsiveness rules

@@ -1,0 +1,1295 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OERMS Result Service API",
+    "description": "API documentation for Exam Result Management Service",
+    "contact": {
+      "name": "OERMS Team",
+      "email": "support@oerms.com"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:9005",
+      "description": "Direct Access"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Via API Gateway"
+    }
+  ],
+  "security": [
+    {
+      "Bearer Authentication": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Result Management",
+      "description": "APIs for managing exam results"
+    }
+  ],
+  "paths": {
+    "/api/results/{id}/unpublish": {
+      "post": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Unpublish result",
+        "description": "Unpublishes a result",
+        "operationId": "unpublishResult",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Result ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseResultDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/{id}/publish": {
+      "post": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Publish result",
+        "description": "Publishes a result to make it visible to the student",
+        "operationId": "publishResult",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Result ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishResultRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseResultDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/{id}/grade": {
+      "post": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Grade result",
+        "description": "Manually grades a result (for subjective questions)",
+        "operationId": "gradeResult",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Result ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GradeResultRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseResultDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/exam/{examId}/calculate-rankings": {
+      "post": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Calculate rankings",
+        "description": "Calculates rankings for all published results in an exam",
+        "operationId": "calculateRankings",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/{id}": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get result by ID",
+        "description": "Retrieves a single result (students can only see published results)",
+        "operationId": "getResult",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Result ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseResultDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Delete result",
+        "description": "Deletes a result (admin only)",
+        "operationId": "deleteResult",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Result ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/suspicious": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get suspicious results",
+        "description": "Retrieves all results with suspicious activity",
+        "operationId": "getSuspiciousResults",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListResultSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/student/{studentId}/statistics": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get student statistics",
+        "description": "Retrieves statistics for a specific student",
+        "operationId": "getStudentStatistics",
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "description": "Student ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseStudentStatisticsDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/pending-grading": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get pending grading",
+        "description": "Retrieves all results requiring manual grading",
+        "operationId": "getPendingGradingResults",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListResultSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/my-statistics": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get my statistics",
+        "description": "Retrieves statistics for the current student",
+        "operationId": "getMyStatistics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseStudentStatisticsDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/my-results": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get my results",
+        "description": "Retrieves all published results for the current student",
+        "operationId": "getMyResults",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "publishedAt"
+            }
+          },
+          {
+            "name": "sortDir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "DESC"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResultSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/my-results/exam/{examId}": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get my results for exam",
+        "description": "Retrieves student's results for a specific exam",
+        "operationId": "getMyExamResults",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResultSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/health": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Health check",
+        "description": "Check if result service is running",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseString"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/exam/{examId}": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get exam results",
+        "description": "Retrieves all results for a specific exam",
+        "operationId": "getExamResults",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "submittedAt"
+            }
+          },
+          {
+            "name": "sortDir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "DESC"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResultSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/exam/{examId}/top-scorers": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get top scorers",
+        "description": "Retrieves top scorers for an exam",
+        "operationId": "getTopScorers",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListResultSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/exam/{examId}/suspicious": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get suspicious results by exam",
+        "description": "Retrieves suspicious results for a specific exam",
+        "operationId": "getSuspiciousResultsByExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListResultSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/exam/{examId}/statistics": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get exam statistics",
+        "description": "Retrieves detailed statistics for an exam",
+        "operationId": "getExamStatistics",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExamResultStatisticsDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/results/exam/{examId}/pending-grading": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get pending grading by exam",
+        "description": "Retrieves results requiring grading for a specific exam",
+        "operationId": "getPendingGradingByExam",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListResultSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiResponseResultDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ResultDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ResultDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examTitle": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "obtainedMarks": {
+            "type": "number",
+            "format": "double"
+          },
+          "percentage": {
+            "type": "number",
+            "format": "double"
+          },
+          "passingMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "grade": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_GRADING",
+              "GRADED",
+              "PUBLISHED",
+              "WITHHELD"
+            ]
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "correctAnswers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "wrongAnswers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unanswered": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeTakenSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "gradedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "gradedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gradedByName": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "teacherFeedback": {
+            "type": "string"
+          },
+          "teacherRemarks": {
+            "type": "string"
+          },
+          "autoGraded": {
+            "type": "boolean"
+          },
+          "requiresManualGrading": {
+            "type": "boolean"
+          },
+          "objectiveMarks": {
+            "type": "number",
+            "format": "double"
+          },
+          "subjectiveMarks": {
+            "type": "number",
+            "format": "double"
+          },
+          "tabSwitches": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "webcamViolations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "suspiciousActivity": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PublishResultRequest": {
+        "type": "object",
+        "properties": {
+          "resultId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "calculateRankings": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "resultId"
+        ]
+      },
+      "GradeResultRequest": {
+        "type": "object",
+        "properties": {
+          "resultId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "obtainedMarks": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0
+          },
+          "comments": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "obtainedMarks",
+          "resultId"
+        ]
+      },
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseListResultSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultSummaryDTO"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ResultSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examTitle": {
+            "type": "string"
+          },
+          "obtainedMarks": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "percentage": {
+            "type": "number",
+            "format": "double"
+          },
+          "grade": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_GRADING",
+              "GRADED",
+              "PUBLISHED",
+              "WITHHELD"
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseStudentStatisticsDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/StudentStatisticsDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "StudentStatisticsDTO": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalResults": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "publishedResults": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "averageScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "recentResults": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultSummaryDTO"
+            }
+          }
+        }
+      },
+      "ApiResponsePageResultSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PageResultSummaryDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "PageResultSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultSummaryDTO"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paged": {
+            "type": "boolean"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unpaged": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "empty": {
+            "type": "boolean"
+          },
+          "sorted": {
+            "type": "boolean"
+          },
+          "unsorted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseString": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseExamResultStatisticsDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ExamResultStatisticsDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ExamResultStatisticsDTO": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examTitle": {
+            "type": "string"
+          },
+          "totalResults": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "publishedResults": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingGrading": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "withheldResults": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "averageScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "highestScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "lowestScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "medianScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "averagePercentage": {
+            "type": "number",
+            "format": "double"
+          },
+          "passRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "passedCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failedCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "gradeDistribution": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "suspiciousResultsCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "averageTimeSpent": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Bearer Authentication": {
+        "type": "http",
+        "description": "Enter JWT token obtained from auth-server",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

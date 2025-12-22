@@ -6,55 +6,52 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- ================================= -->
-    <!-- Parent Coordinates                -->
-    <!-- ================================= -->
+    <!-- Parent Coordinates -->
     <parent>
         <groupId>com.oerms</groupId>
         <artifactId>oerms-parent</artifactId>
         <version>1.0.0</version>
-        <relativePath/>
     </parent>
 
-    <!-- ================================= -->
-    <!-- Project Coordinates               -->
-    <!-- ================================= -->
+    <!-- Project Coordinates -->
     <artifactId>notification-service</artifactId>
-    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>Notification Service</name>
 
-    <!-- ================================= -->
-    <!-- Dependencies                      -->
-    <!-- ================================= -->
+    <!-- Dependencies -->
     <dependencies>
 
-        <!-- Shared Module -->
+        <!-- Common Module -->
         <dependency>
             <groupId>com.oerms</groupId>
             <artifactId>common</artifactId>
-            <version>1.0.0</version>
         </dependency>
 
-        <!-- Spring Boot Essentials -->
+        <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!-- JPA -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
+
+        <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- PostgreSQL Database -->
+        <!-- PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
 
-        <!-- Service Discovery -->
+        <!-- Eureka Client -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
@@ -71,17 +68,24 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+
         <dependency>
             <groupId>io.lettuce</groupId>
             <artifactId>lettuce-core</artifactId>
-            <version>6.7.1.RELEASE</version>
         </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
 
-        <!-- Messaging -->
+        <!-- Jackson JSR310 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!-- Kafka -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
@@ -93,18 +97,16 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
-        <!-- Twilio SMS (if using SMS) -->
+        <!-- Twilio SMS -->
         <dependency>
             <groupId>com.twilio.sdk</groupId>
             <artifactId>twilio</artifactId>
-            <version>8.31.1</version>
         </dependency>
 
-        <!-- Firebase Push Notifications (FCM) -->
+        <!-- Firebase Push Notifications -->
         <dependency>
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
-            <version>9.1.1</version>
         </dependency>
 
         <!-- OAuth2 Resource Server -->
@@ -113,22 +115,10 @@
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
 
-        <!-- Jackson JSR310 (LocalDateTime) -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-        </dependency>
-
-        <!-- Swagger / OpenAPI -->
+        <!-- API Documentation -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-        </dependency>
-
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
         </dependency>
 
         <!-- Testing -->
@@ -140,9 +130,7 @@
 
     </dependencies>
 
-    <!-- ================================= -->
-    <!-- Build Configuration               -->
-    <!-- ================================= -->
+    <!-- Build Configuration -->
     <build>
         <plugins>
             <plugin>

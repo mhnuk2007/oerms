@@ -8,7 +8,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(scanBasePackages = {
     "com.oerms.exam",
-    "com.oerms.common.config",
     "com.oerms.common.exception"
 })
 @EnableDiscoveryClient

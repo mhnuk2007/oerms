@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!-- ========================= -->
-    <!-- Project Coordinates      -->
+    <!-- Project Coordinates       -->
     <!-- ========================= -->
     <groupId>com.oerms</groupId>
     <artifactId>oerms-parent</artifactId>
@@ -16,7 +16,7 @@
     <name>OERMS Parent</name>
 
     <!-- ========================= -->
-    <!-- Modules                  -->
+    <!-- Modules                   -->
     <!-- ========================= -->
     <modules>
         <module>system-registry</module>
@@ -32,7 +32,7 @@
     </modules>
 
     <!-- ========================= -->
-    <!-- Centralized Versions     -->
+    <!-- Centralized Versions      -->
     <!-- ========================= -->
     <properties>
         <java.version>17</java.version>
@@ -46,11 +46,17 @@
         <postgresql.version>42.7.8</postgresql.version>
         <flyway.version>11.16.0</flyway.version>
         <hikari.version>6.3.0</hikari.version>
+        <lettuce.version>6.7.1.RELEASE</lettuce.version>
         <kafka.version>3.3.10</kafka.version>
 
         <springdoc.version>2.8.14</springdoc.version>
+        <swagger.version>2.2.38</swagger.version>
+        <feign-jackson.version>13.6</feign-jackson.version>
+        <twilio.version>8.31.1</twilio.version>
+        <firebase.version>9.1.1</firebase.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.version>3.13.0</maven.compiler.version>
     </properties>
 
     <!-- ========================= -->
@@ -84,7 +90,7 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <!-- MapStruct BOM -->
+            <!-- MapStruct -->
             <dependency>
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
@@ -110,11 +116,25 @@
                 <version>${hikari.version}</version>
             </dependency>
 
+            <!-- Redis -->
+            <dependency>
+                <groupId>io.lettuce</groupId>
+                <artifactId>lettuce-core</artifactId>
+                <version>${lettuce.version}</version>
+            </dependency>
+
             <!-- Kafka -->
             <dependency>
                 <groupId>org.springframework.kafka</groupId>
                 <artifactId>spring-kafka</artifactId>
                 <version>${kafka.version}</version>
+            </dependency>
+
+            <!-- Feign -->
+            <dependency>
+                <groupId>io.github.openfeign</groupId>
+                <artifactId>feign-jackson</artifactId>
+                <version>${feign-jackson.version}</version>
             </dependency>
 
             <!-- API Documentation -->
@@ -125,10 +145,30 @@
             </dependency>
 
             <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-models</artifactId>
-                <version>2.2.38</version>
+                <version>${swagger.version}</version>
             </dependency>
+
+            <!-- External Services -->
+            <dependency>
+                <groupId>com.twilio.sdk</groupId>
+                <artifactId>twilio</artifactId>
+                <version>${twilio.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.firebase</groupId>
+                <artifactId>firebase-admin</artifactId>
+                <version>${firebase.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -165,7 +205,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.13.0</version>
+                    <version>${maven.compiler.version}</version>
                     <configuration>
                         <release>${java.version}</release>
                         <compilerArgs>
@@ -195,7 +235,7 @@
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
-                    <version>3.5.8</version>
+                    <version>${spring.boot.version}</version>
                     <configuration>
                         <image>
                             <name>oerms/${project.artifactId}:${project.version}</name>

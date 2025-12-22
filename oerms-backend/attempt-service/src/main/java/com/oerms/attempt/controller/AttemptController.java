@@ -169,6 +169,17 @@ public class AttemptController {
         return ResponseEntity.ok(ApiResponse.success("Answers retrieved successfully", answers));
     }
 
+    @GetMapping("/{attemptId}/result-details")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get detailed attempt result", description = "Retrieves a detailed breakdown of the attempt, including questions and answers.")
+    public ResponseEntity<ApiResponse<AttemptResultResponse>> getAttemptResultDetails(
+            @Parameter(description = "Attempt ID") @PathVariable UUID attemptId,
+            Authentication authentication) {
+        log.info("Get detailed attempt result request for attemptId: {}", attemptId);
+        AttemptResultResponse result = attemptService.getAttemptResultDetails(attemptId, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Detailed result retrieved successfully", result));
+    }
+
     // ==================== Teacher/Admin Operations ====================
 
     @GetMapping("/exam/{examId}")

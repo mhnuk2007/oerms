@@ -21,7 +21,6 @@ public class QuestionDTO {
     private Integer orderIndex;
     private List<String> options; // For MCQ/MULTIPLE_SELECT
     private String correctAnswer; // Stores correct answer(s)
-    private String explanation;
     private String difficultyLevel; // EASY, MEDIUM, HARD
     private String imageUrl;
     private LocalDateTime createdAt;

@@ -274,6 +274,17 @@ public class ResultService {
     }
 
     /**
+     * Gets a result by attempt ID
+     */
+    @Transactional(readOnly = true)
+    public ResultDTO getResultByAttemptId(UUID attemptId) {
+        log.debug("Fetching result for attempt: {}", attemptId);
+        Result result = resultRepository.findByAttemptId(attemptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Result not found for attempt: " + attemptId));
+        return resultMapper.toDTO(result);
+    }
+
+    /**
      * Gets student's own results
      */
     @Transactional(readOnly = true)

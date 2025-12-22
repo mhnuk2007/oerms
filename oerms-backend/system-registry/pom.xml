@@ -6,21 +6,27 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Parent Coordinates -->
     <parent>
         <groupId>com.oerms</groupId>
         <artifactId>oerms-parent</artifactId>
         <version>1.0.0</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <!-- Project Coordinates -->
     <artifactId>system-registry</artifactId>
     <packaging>jar</packaging>
+    <name>System Registry</name>
 
+    <!-- Dependencies -->
     <dependencies>
+
+        <!-- Eureka Server -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
         </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -30,6 +36,7 @@
 
     </dependencies>
 
+    <!-- Build Configuration -->
     <build>
         <plugins>
             <plugin>
@@ -38,4 +45,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>

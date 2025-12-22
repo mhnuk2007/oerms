@@ -1,3 +1,4 @@
+
 package com.oerms.exam.service;
 
 import com.oerms.common.dto.ApiResponse;
@@ -67,10 +68,10 @@ public class ExamService {
         exam.setTeacherName(teacherName);
 
         exam = examRepository.save(exam);
-        
+
         eventPublisher.publishExamCreated(exam);
         log.info("Exam created: {} by teacher: {}", exam.getId(), teacherId);
-        
+
         return examMapper.toDTO(exam);
     }
 
@@ -142,10 +143,10 @@ public class ExamService {
         examMapper.updateEntityFromDTO(request, exam);
 
         exam = examRepository.save(exam);
-        
+
         eventPublisher.publishExamUpdated(exam);
         log.info("Exam updated: {} by user: {}", examId, JwtUtils.getUserId(authentication));
-        
+
         return examMapper.toDTO(exam);
     }
 
@@ -161,7 +162,7 @@ public class ExamService {
         }
 
         examRepository.delete(exam);
-        
+
         eventPublisher.publishExamDeleted(exam);
         log.info("Exam deleted: {} by user: {}", examId, JwtUtils.getUserId(authentication));
     }
@@ -183,12 +184,12 @@ public class ExamService {
         exam = examRepository.save(exam);
 
         eventPublisher.publishExamPublished(exam);
-        
+
         // If exam has start time, also publish scheduled event
         if (exam.getStartTime() != null) {
             eventPublisher.publishExamScheduled(exam);
         }
-        
+
         log.info("Exam published: {} by teacher: {}", examId, JwtUtils.getUserId(authentication));
         return examMapper.toDTO(exam);
     }
@@ -241,7 +242,7 @@ public class ExamService {
 
         eventPublisher.publishExamUnpublished(exam);
         log.info("Exam unpublished: {} by teacher: {}", examId, JwtUtils.getUserId(authentication));
-        
+
         return examMapper.toDTO(exam);
     }
 
@@ -258,7 +259,7 @@ public class ExamService {
 
         eventPublisher.publishExamArchived(exam);
         log.info("Exam archived: {} by teacher: {}", examId, JwtUtils.getUserId(authentication));
-        
+
         return examMapper.toDTO(exam);
     }
 
@@ -279,7 +280,7 @@ public class ExamService {
 
         eventPublisher.publishExamCancelled(exam, reason);
         log.info("Exam cancelled: {} by teacher: {} - Reason: {}", examId, JwtUtils.getUserId(authentication), reason);
-        
+
         return examMapper.toDTO(exam);
     }
 
@@ -324,8 +325,8 @@ public class ExamService {
                 .map(ApiResponse::getData)
                 .orElseThrow(() -> {
                     String errorMsg = Optional.ofNullable(attemptResponse)
-                                            .map(ApiResponse::getMessage)
-                                            .orElse("Unknown error");
+                            .map(ApiResponse::getMessage)
+                            .orElse("Unknown error");
                     log.error("Attempt service returned error for exam {}: {}", examId, errorMsg);
                     return new ServiceException("Failed to create exam attempt: " + errorMsg);
                 });

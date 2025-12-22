@@ -44,6 +44,7 @@ public class AttemptService {
     private final ExamServiceClient examServiceClient;
     private final StudentQuestionServiceClient studentQuestionServiceClient;
     private final InternalQuestionServiceClient internalQuestionServiceClient;
+    private final ResultServiceClient resultServiceClient;
     private final AttemptEventProducer eventProducer;
 
     @Transactional
@@ -228,9 +229,9 @@ public class AttemptService {
         log.trace("Graded questionId: {}. Correct: {}. Marks: {}", question.getId(), isCorrect, answer.getMarksObtained());
         return answer.getMarksObtained();
     }
-    
+
     // Other methods...
-    
+
     private ExamAttempt createNewAttempt(StartAttemptRequest request, UUID studentId, String studentName, String ipAddress, String userAgent, ExamDTO exam, List<StudentQuestionDTO> questions, long attemptCount) {
         ExamAttempt attempt = ExamAttempt.builder()
                 .examId(request.getExamId())
@@ -312,6 +313,86 @@ public class AttemptService {
                 .sorted(Comparator.comparingInt(AttemptAnswer::getQuestionOrder))
                 .map(attemptMapper::toAnswerResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AttemptResultResponse getAttemptResultDetails(UUID attemptId, Authentication authentication) {
+        log.debug("Fetching detailed result for attemptId: {}", attemptId);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        UUID currentUserId = JwtUtils.getUserId(authentication);
+        String role = JwtUtils.getRole(authentication);
+
+        if (!attempt.getStudentId().equals(currentUserId) && !ROLE_ADMIN.equals(role) && !ROLE_TEACHER.equals(role)) {
+            log.warn("Unauthorized attempt to view result details for attemptId: {} by userId: {}", attemptId, currentUserId);
+            throw new UnauthorizedException("Not authorized to view this attempt result");
+        }
+
+        // Fetch the result from the result-service
+        ResultDTO result = getResultFromService(attemptId);
+
+        // For students, only show published results
+        if ("ROLE_STUDENT".equals(role) && !"PUBLISHED".equals(result.getStatus())) {
+            throw new UnauthorizedException("Result is not yet published.");
+        }
+
+        // Fetch all questions for this attempt
+        List<UUID> questionIds = attempt.getAnswers().stream()
+                .map(AttemptAnswer::getQuestionId)
+                .collect(Collectors.toList());
+
+        Map<UUID, QuestionDTO> questionMap = fetchQuestionsForGrading(attemptId, questionIds);
+
+        List<AttemptResultDetailDTO> details = attempt.getAnswers().stream()
+                .sorted(Comparator.comparingInt(AttemptAnswer::getQuestionOrder))
+                .map(answer -> {
+                    QuestionDTO question = questionMap.get(answer.getQuestionId());
+                    return AttemptResultDetailDTO.builder()
+                            .questionId(answer.getQuestionId())
+                            .questionText(question != null ? question.getQuestionText() : "Question not found")
+                            .questionType(question != null ? question.getQuestionType() : null)
+                            .options(question != null ? question.getOptions() : null)
+                            .correctAnswer(question != null ? question.getCorrectAnswer() : null)
+                            .studentSelectedOptions(answer.getSelectedOptions())
+                            .studentAnswerText(answer.getAnswerText())
+                            .isCorrect(answer.getIsCorrect())
+                            .marksAllocated(answer.getMarksAllocated())
+                            .marksObtained(answer.getMarksObtained())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return AttemptResultResponse.builder()
+                .attemptId(attempt.getId())
+                .examId(attempt.getExamId())
+                .examTitle(attempt.getExamTitle())
+                .studentId(attempt.getStudentId())
+                .studentName(attempt.getStudentName())
+                .status(attempt.getStatus())
+                .totalMarks(result.getTotalMarks())
+                .obtainedMarks(result.getObtainedMarks())
+                .percentage(result.getPercentage())
+                .passed(result.getPassed())
+                .grade(result.getGrade())
+                .resultStatus(result.getStatus())
+                .publishedAt(result.getPublishedAt())
+                .submittedAt(attempt.getSubmittedAt())
+                .timeTakenSeconds(attempt.getTimeTakenSeconds())
+                .details(details)
+                .build();
+    }
+
+    private ResultDTO getResultFromService(UUID attemptId) {
+        try {
+            ApiResponse<ResultDTO> response = resultServiceClient.getResultByAttemptId(attemptId);
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                log.error("Invalid response from result-service for attemptId: {}. Response: {}", attemptId, response);
+                throw new ResourceNotFoundException("Result not found for attempt id: " + attemptId);
+            }
+            return response.getData();
+        } catch (FeignException e) {
+            log.error("Feign error fetching result for attemptId: {}. Status: {}, Body: {}", attemptId, e.status(), e.contentUTF8(), e);
+            throw new ServiceException("Failed to fetch result details. Please try again later.");
+        }
     }
 
     @Transactional(readOnly = true)

@@ -1,0 +1,2389 @@
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/ExamDetailsDTO.java
+package com.oerms.attempt.client;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ExamDetailsDTO {
+    private UUID id;
+    private String title;
+    private String description;
+    private UUID teacherId;
+    private String teacherName;
+    private Integer duration; // in minutes
+    private Integer totalMarks;
+    private Integer passingMarks;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
+
+    // Changed from Boolean to String to match exam-service
+    private String status; // DRAFT, PUBLISHED, ARCHIVED, CANCELLED
+
+    private Boolean isActive;
+    private Boolean allowMultipleAttempts;
+    private Integer maxAttempts;
+    private Boolean shuffleQuestions;
+    private Boolean showResultsImmediately;
+    private String instructions;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    /**
+     * Helper method to check if exam is published
+     * Checks the status enum value
+     */
+    public Boolean getIsPublished() {
+        return "PUBLISHED".equals(status);
+    }
+
+    /**
+     * Helper method to check if exam is active
+     * An exam is considered active if status is PUBLISHED and isActive is true
+     */
+    public Boolean isAvailableForAttempt() {
+        return getIsPublished() && Boolean.TRUE.equals(isActive);
+    }
+
+    /**
+     * Helper method to check if exam has started
+     */
+    public Boolean hasStarted() {
+        if (startTime == null) {
+            return true; // No start time means it's always started
+        }
+        return LocalDateTime.now().isAfter(startTime) ||
+               LocalDateTime.now().isEqual(startTime);
+    }
+
+    /**
+     * Helper method to check if exam has ended
+     */
+    public Boolean hasEnded() {
+        if (endTime == null) {
+            return false; // No end time means it never ends
+        }
+        return LocalDateTime.now().isAfter(endTime);
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/ExamQuestionDTO.java
+package com.oerms.attempt.client;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ExamQuestionDTO {
+    private UUID questionId;
+    private Integer marks;
+    private Integer negativeMarks;
+    private Integer orderIndex;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/ExamServiceClient.java
+package com.oerms.attempt.client;
+
+import com.oerms.attempt.config.FeignClientConfig;
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.dto.ExamDTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import java.util.UUID;
+
+@FeignClient(name = "exam-service", path = "/api/exams", configuration = FeignClientConfig.class)
+public interface ExamServiceClient {
+
+    @GetMapping("/{id}")
+    ApiResponse<ExamDTO> getExam(@PathVariable("id") UUID examId);
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/InternalQuestionServiceClient.java
+package com.oerms.attempt.client;
+
+import com.oerms.attempt.config.FeignM2MConfig;
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.dto.QuestionDTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.List;
+import java.util.UUID;
+
+@FeignClient(
+    name = "internal-question-service",
+    url = "${question-service.url}",
+    path = "/api/questions/internal",
+    configuration = FeignM2MConfig.class,
+    contextId = "internalQuestionServiceClient"
+)
+public interface InternalQuestionServiceClient {
+    @PostMapping("/batch")
+    ApiResponse<List<QuestionDTO>> getQuestionsByIds(@RequestBody List<UUID> questionIds);
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/QuestionDTO.java
+package com.oerms.attempt.client;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class QuestionDTO {
+    private UUID id;
+    private UUID examId;
+    private String questionText;
+    private String questionType; // Renamed from 'type' to 'questionType'
+    private Integer marks;
+    private Integer orderIndex;
+    private List<String> options; // For MCQ/MULTIPLE_SELECT
+    private String correctAnswer; // Stores correct answer(s)
+    private String explanation;
+    private String difficultyLevel; // EASY, MEDIUM, HARD
+    private String imageUrl;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/QuestionOptionDTO.java
+package com.oerms.attempt.client;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class QuestionOptionDTO {
+    private UUID id;
+    private String optionText;
+    private Boolean isCorrect;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/QuestionServiceClient.java
+package com.oerms.attempt.client;
+
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.dto.QuestionDTO;
+import com.oerms.common.dto.QuestionStatisticsDTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import java.util.UUID;
+
+@FeignClient(name = "question-service", path = "/api/questions")
+public interface QuestionServiceClient {
+
+    @GetMapping("/{id}")
+    ApiResponse<QuestionDTO> getQuestion(@PathVariable("id") UUID questionId);
+
+    @GetMapping("/exam/{examId}/count")
+    ApiResponse<Long> getQuestionCount(@PathVariable("examId") UUID examId);
+
+    @GetMapping("/exam/{examId}/total-marks")
+    ApiResponse<Integer> getTotalMarks(@PathVariable("examId") UUID examId);
+
+    @GetMapping("/exam/{examId}/statistics")
+    ApiResponse<QuestionStatisticsDTO> getExamStatistics(@PathVariable("examId") UUID examId);
+
+    @GetMapping("/exam/{examId}/validate")
+    ApiResponse<Boolean> validateExamQuestions(@PathVariable("examId") UUID examId);
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/QuestionStatisticsDTO.java
+package com.oerms.attempt.client;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class QuestionStatisticsDTO {
+    // Total counts
+    private Long totalQuestions;
+    private Integer totalMarks;
+
+    // By question type
+    private Long mcqCount;
+    private Long multipleSelectCount;
+    private Long trueFalseCount;
+    private Long shortAnswerCount;
+    private Long essayCount;
+
+    // By difficulty level
+    private Long easyCount;
+    private Long mediumCount;
+    private Long hardCount;
+
+    // Additional metrics
+    private Double averageMarksPerQuestion;
+    private Integer highestMarks;
+    private Integer lowestMarks;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/StudentQuestionDTO.java
+package com.oerms.attempt.client;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * DTO for questions shown to students during exam
+ * Does NOT include correctAnswer to prevent cheating
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class StudentQuestionDTO {
+    private UUID id;
+    private UUID examId;
+    private String questionText;
+    private String type; // MCQ, MULTIPLE_SELECT, TRUE_FALSE, SHORT_ANSWER, ESSAY
+    private Integer marks;
+    private Integer orderIndex;
+    private List<String> options; // For MCQ/MULTIPLE_SELECT
+    private String explanation; // May be shown after submission
+    private String difficultyLevel; // EASY, MEDIUM, HARD
+    private String imageUrl;
+
+    // NOTE: correctAnswer is intentionally excluded for security
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/StudentQuestionServiceClient.java
+package com.oerms.attempt.client;
+
+import com.oerms.attempt.config.FeignClientConfig;
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.dto.StudentQuestionDTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
+import java.util.UUID;
+
+@FeignClient(
+    name = "question-service",
+    path = "/api/questions",
+    configuration = FeignClientConfig.class,
+    contextId = "studentQuestionServiceClient"
+)
+public interface StudentQuestionServiceClient {
+    @GetMapping("/exam/{examId}/student")
+    ApiResponse<List<StudentQuestionDTO>> getExamQuestionsForStudent(
+        @PathVariable("examId") UUID examId,
+        @RequestParam(defaultValue = "false") boolean shuffle);
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/client/TeacherQuestionServiceClient.java
+package com.oerms.attempt.client;
+
+import com.oerms.attempt.config.FeignM2MConfig;
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.dto.QuestionDTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import java.util.List;
+import java.util.UUID;
+
+@FeignClient(
+    name = "question-service",
+    path = "/api/questions",
+    configuration = FeignM2MConfig.class,
+    contextId = "teacherQuestionServiceClient"
+)
+public interface TeacherQuestionServiceClient {
+    @GetMapping("/exam/{examId}")
+    ApiResponse<List<QuestionDTO>> getExamQuestions(@PathVariable("examId") UUID examId);
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/config/FeignClientConfig.java
+package com.oerms.attempt.config;
+
+import feign.RequestInterceptor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+
+@Slf4j
+public class FeignClientConfig {
+
+    @Bean
+    public RequestInterceptor requestInterceptor() {
+        return requestTemplate -> {
+            // Only add the user token if an Authorization header is not already present
+            if (requestTemplate.headers().containsKey("Authorization")) {
+                log.debug("Authorization header already exists. Skipping user token interceptor for target: {}", requestTemplate.feignTarget().name());
+                return;
+            }
+
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication instanceof JwtAuthenticationToken) {
+                JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
+                String token = jwtAuthenticationToken.getToken().getTokenValue();
+                requestTemplate.header("Authorization", "Bearer " + token);
+                log.debug("Applied user token to Feign request for target: {}", requestTemplate.feignTarget().name());
+            } else {
+                log.warn("No JWT authentication token found in SecurityContext. Cannot apply user token to Feign request for target: {}", requestTemplate.feignTarget().name());
+            }
+        };
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/config/FeignM2MConfig.java
+package com.oerms.attempt.config;
+
+import com.oerms.attempt.security.OAuth2ClientCredentialsManager;
+import feign.RequestInterceptor;
+import feign.RequestTemplate;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
+
+@RequiredArgsConstructor
+@Slf4j
+public class FeignM2MConfig {
+
+    private final OAuth2ClientCredentialsManager tokenManager;
+
+    @Bean
+    public RequestInterceptor m2mRequestInterceptor() {
+        return template -> {
+            try {
+                String token = tokenManager.getToken();
+                template.header("Authorization", "Bearer " + token);
+                log.debug("Applied M2M token to Feign request for target: {}", template.feignTarget().name());
+            } catch (Exception e) {
+                log.error("Failed to apply M2M token for target: {}. Error: {}", template.feignTarget().name(), e.getMessage());
+                // Optionally, you could re-throw as a runtime exception if you want the Feign call to fail immediately
+                // throw new RuntimeException("Failed to obtain M2M token for Feign request", e);
+            }
+        };
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/config/KafkaProducerConfig.java
+package com.oerms.attempt.config;
+
+
+import com.oerms.common.event.AttemptEvent;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.serializer.JsonSerializer;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Configuration
+public class KafkaProducerConfig {
+
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String bootstrapServers;
+
+    @Bean
+    public ProducerFactory<String, AttemptEvent> producerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        props.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
+        return new DefaultKafkaProducerFactory<>(props);
+    }
+
+    @Bean
+    public KafkaTemplate<String, AttemptEvent> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/config/OpenApiConfig.java
+package com.oerms.attempt.config;
+
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
+
+@Configuration
+public class OpenApiConfig {
+
+    @Bean
+    public OpenAPI attemptServiceOpenAPI() {
+        return new OpenAPI()
+            .info(new Info()
+                .title("OERMS Attempt Service API")
+                .description("API documentation for Exam Attempt Management Service")
+                .version("1.0.0")
+                .contact(new Contact()
+                    .name("OERMS Team")
+                    .email("support@oerms.com"))
+                .license(new License()
+                    .name("Apache 2.0")
+                    .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
+            .servers(List.of(
+                new Server().url("http://localhost:9004").description("Direct Access"),
+                new Server().url("http://localhost:8080").description("Via API Gateway")
+            ))
+            .addSecurityItem(new SecurityRequirement().addList("Bearer Authentication"))
+            .components(new Components()
+                .addSecuritySchemes("Bearer Authentication",
+                    new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")
+                        .description("Enter JWT token obtained from auth-server")));
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/config/RestTemplateConfig.java
+package com.oerms.attempt.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
+
+@Configuration
+public class RestTemplateConfig {
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/config/SecurityConfig.java
+package com.oerms.attempt.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true, securedEnabled = true, jsr250Enabled = true)
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
+                        .requestMatchers(
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/api/attempts/health"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/attempts/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/attempts/**").hasAnyRole("STUDENT", "TEACHER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/attempts/**").hasAnyRole("TEACHER", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/attempts/**").hasAnyRole("TEACHER", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/attempts/**").hasAnyRole("TEACHER", "ADMIN")
+                        .anyRequest().authenticated()
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                );
+
+        return http.build();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        return NimbusJwtDecoder.withJwkSetUri("http://localhost:9000/oauth2/jwks").build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        grantedAuthoritiesConverter.setAuthoritiesClaimName("roles"); // Changed from "authorities" to "roles"
+        grantedAuthoritiesConverter.setAuthorityPrefix("");
+
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+
+        return jwtAuthenticationConverter;
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/controller/AttemptController.java
+package com.oerms.attempt.controller;
+
+import com.oerms.attempt.dto.*;
+import com.oerms.attempt.service.AttemptService;
+import com.oerms.common.dto.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.*;
+import org.springframework.http.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/attempts")
+@RequiredArgsConstructor
+@Slf4j
+@Tag(name = "Attempt Management", description = "APIs for managing exam attempts")
+public class AttemptController {
+
+    private final AttemptService attemptService;
+
+    // ==================== Student Operations ====================
+
+    @PostMapping("/start")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Start exam attempt", description = "Starts a new exam attempt for a student")
+    public ResponseEntity<ApiResponse<AttemptResponse>> startAttempt(
+            @Valid @RequestBody StartAttemptRequest request,
+            HttpServletRequest httpRequest,
+            Authentication authentication) {
+        log.info("Start attempt request for exam: {}", request.getExamId());
+
+        String ipAddress = httpRequest.getRemoteAddr();
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        AttemptResponse response = attemptService.startAttempt(request, ipAddress, userAgent, authentication);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Attempt started successfully", response));
+    }
+
+    @PostMapping("/{attemptId}/answers")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Save answer", description = "Saves or updates an answer for a question in an attempt")
+    public ResponseEntity<ApiResponse<AttemptAnswerResponse>> saveAnswer(
+            @Parameter(description = "Attempt ID") @PathVariable UUID attemptId,
+            @Valid @RequestBody SaveAnswerRequest request,
+            Authentication authentication) {
+        log.debug("Save answer request for attempt: {}, question: {}", attemptId, request.getQuestionId());
+
+        AttemptAnswerResponse response = attemptService.saveAnswer(attemptId, request, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Answer saved successfully", response));
+    }
+
+    @PostMapping("/submit")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Submit attempt", description = "Submits a completed exam attempt")
+    public ResponseEntity<ApiResponse<AttemptResponse>> submitAttempt(
+            @Valid @RequestBody SubmitAttemptRequest request,
+            Authentication authentication) {
+        log.info("Submit attempt request: {}", request.getAttemptId());
+
+        AttemptResponse response = attemptService.submitAttempt(request, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Attempt submitted successfully", response));
+    }
+
+    @GetMapping("/my-attempts")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Get my attempts", description = "Retrieves all attempts by the current student")
+    public ResponseEntity<ApiResponse<Page<AttemptSummary>>> getMyAttempts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        log.info("Get my attempts request");
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startedAt").descending());
+        Page<AttemptSummary> attempts = attemptService.getStudentAttempts(pageable, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Attempts retrieved successfully", attempts));
+    }
+
+    @GetMapping("/my-attempts/exam/{examId}")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Get my attempts for exam", description = "Retrieves all attempts by current student for a specific exam")
+    public ResponseEntity<ApiResponse<Page<AttemptSummary>>> getMyExamAttempts(
+            @Parameter(description = "Exam ID") @PathVariable UUID examId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        log.info("Get my attempts for exam: {}", examId);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startedAt").descending());
+        Page<AttemptSummary> attempts = attemptService.getStudentExamAttempts(examId, pageable, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Attempts retrieved successfully", attempts));
+    }
+
+    @GetMapping("/my-attempts/count")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Get my attempts count", description = "Returns total number of attempts by current student")
+    public ResponseEntity<ApiResponse<Long>> getMyAttemptsCount(Authentication authentication) {
+        log.info("Get my attempts count request");
+
+        Long count = attemptService.getStudentAttemptsCount(authentication);
+        return ResponseEntity.ok(ApiResponse.success("Attempt count retrieved successfully", count));
+    }
+
+    // ==================== Proctoring ====================
+
+    @PostMapping("/{attemptId}/tab-switch")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Record tab switch", description = "Records when student switches browser tabs during exam")
+    public ResponseEntity<ApiResponse<Void>> recordTabSwitch(
+            @Parameter(description = "Attempt ID") @PathVariable UUID attemptId,
+            Authentication authentication) {
+        attemptService.recordTabSwitch(attemptId, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Tab switch recorded", null));
+    }
+
+    @PostMapping("/{attemptId}/webcam-violation")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Record webcam violation", description = "Records webcam/face detection violations")
+    public ResponseEntity<ApiResponse<Void>> recordWebcamViolation(
+            @Parameter(description = "Attempt ID") @PathVariable UUID attemptId,
+            Authentication authentication) {
+        attemptService.recordWebcamViolation(attemptId, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Webcam violation recorded", null));
+    }
+
+    @PostMapping("/{attemptId}/violations/custom")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Record custom violation", description = "Records any custom proctoring violation")
+    public ResponseEntity<ApiResponse<Void>> recordCustomViolation(
+            @Parameter(description = "Attempt ID") @PathVariable UUID attemptId,
+            @RequestParam String violationType,
+            Authentication authentication) {
+        attemptService.recordCustomViolation(attemptId, violationType, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Violation recorded", null));
+    }
+
+    // ==================== View Operations ====================
+
+    @GetMapping("/{attemptId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get attempt details", description = "Retrieves detailed information about an attempt")
+    public ResponseEntity<ApiResponse<AttemptResponse>> getAttempt(
+            @Parameter(description = "Attempt ID") @PathVariable UUID attemptId,
+            Authentication authentication) {
+        log.info("Get attempt request: {}", attemptId);
+
+        AttemptResponse response = attemptService.getAttempt(attemptId, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Attempt retrieved successfully", response));
+    }
+
+    @GetMapping("/{attemptId}/answers")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get attempt answers", description = "Retrieves all answers for an attempt")
+    public ResponseEntity<ApiResponse<java.util.List<AttemptAnswerResponse>>> getAttemptAnswers(
+            @Parameter(description = "Attempt ID") @PathVariable UUID attemptId,
+            Authentication authentication) {
+        log.info("Get attempt answers request: {}", attemptId);
+
+        java.util.List<AttemptAnswerResponse> answers = attemptService.getAttemptAnswers(attemptId, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Answers retrieved successfully", answers));
+    }
+
+    // ==================== Teacher/Admin Operations ====================
+
+    @GetMapping("/exam/{examId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get exam attempts", description = "Retrieves all attempts for a specific exam (teacher/admin)")
+    public ResponseEntity<ApiResponse<Page<AttemptSummary>>> getExamAttempts(
+            @Parameter(description = "Exam ID") @PathVariable UUID examId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        log.info("Get exam attempts request: {}", examId);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startedAt").descending());
+        Page<AttemptSummary> attempts = attemptService.getExamAttempts(examId, pageable, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Attempts retrieved successfully", attempts));
+    }
+
+    @GetMapping("/exam/{examId}/statistics")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get exam attempt statistics", description = "Retrieves statistics for all attempts of an exam")
+    public ResponseEntity<ApiResponse<ExamAttemptStatistics>> getExamAttemptStatistics(
+            @Parameter(description = "Exam ID") @PathVariable UUID examId,
+            Authentication authentication) {
+        log.info("Get exam attempt statistics: {}", examId);
+
+        ExamAttemptStatistics statistics = attemptService.getExamAttemptStatistics(examId, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Statistics retrieved successfully", statistics));
+    }
+
+    @GetMapping("/exam/{examId}/count")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get exam attempts count", description = "Returns total number of attempts for an exam")
+    public ResponseEntity<ApiResponse<Long>> getExamAttemptsCount(
+            @Parameter(description = "Exam ID") @PathVariable UUID examId,
+            Authentication authentication) {
+        log.info("Get exam attempts count: {}", examId);
+
+        Long count = attemptService.getExamAttemptsCount(examId, authentication);
+        return ResponseEntity.ok(ApiResponse.success("Attempt count retrieved successfully", count));
+    }
+
+    @GetMapping("/student/{studentId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
+    @Operation(summary = "Get student attempts", description = "Retrieves all attempts by a specific student (teacher/admin)")
+    public ResponseEntity<ApiResponse<Page<AttemptSummary>>> getStudentAttemptsAdmin(
+            @Parameter(description = "Student ID") @PathVariable UUID studentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Get attempts for student: {}", studentId);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startedAt").descending());
+        Page<AttemptSummary> attempts = attemptService.getStudentAttemptsAdmin(studentId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Attempts retrieved successfully", attempts));
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get all attempts", description = "Retrieves all attempts in the system (admin only)")
+    public ResponseEntity<ApiResponse<Page<AttemptSummary>>> getAllAttempts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Get all attempts request");
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startedAt").descending());
+        Page<AttemptSummary> attempts = attemptService.getAllAttempts(pageable);
+        return ResponseEntity.ok(ApiResponse.success("Attempts retrieved successfully", attempts));
+    }
+
+    // ==================== Health Check ====================
+
+    @GetMapping("/health")
+    @Operation(summary = "Health check", description = "Check if attempt service is running")
+    public ResponseEntity<ApiResponse<String>> health() {
+        return ResponseEntity.ok(ApiResponse.success("Attempt service is running", "OK"));
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/AttemptAnswerDTO.java
+package com.oerms.attempt.dto;
+
+import lombok.*;
+import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AttemptAnswerDTO {
+
+    private UUID id;
+    private UUID questionId;
+    private Integer questionOrder;
+
+    private Set<String> selectedOptions;
+    private String answerText;
+
+    private Boolean correct;
+    private Integer marksAllocated;
+    private Double marksObtained;
+
+    private Integer timeSpentSeconds;
+    private Boolean flagged;
+    private LocalDateTime answeredAt;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/AttemptAnswerResponse.java
+package com.oerms.attempt.dto;
+
+import lombok.*;
+import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AttemptAnswerResponse {
+
+    private UUID questionId;
+    private Integer questionOrder;
+
+    private Set<String> selectedOptions;
+    private String answerText;
+
+    private Boolean correct;
+    private Integer marksAllocated;
+    private Double marksObtained;
+
+    private Integer timeSpentSeconds;
+    private Boolean flagged;
+    private LocalDateTime answeredAt;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/AttemptDto.java
+package com.oerms.attempt.dto;
+
+import com.oerms.attempt.enums.AttemptStatus;
+import lombok.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AttemptDto {
+
+    // ---------- Identity ----------
+    private UUID id;
+    private UUID examId;
+    private String examTitle;
+
+    private UUID studentId;
+    private String studentName;
+    private Integer attemptNumber;
+
+    // ---------- Status ----------
+    private AttemptStatus status;
+
+    // ---------- Progress ----------
+    private Integer totalQuestions;
+    private Integer answeredQuestions;
+    private Integer flaggedQuestions;
+
+    // ---------- Scoring ----------
+    private Integer totalMarks;
+    private Double obtainedMarks;
+    private Double percentage;
+    private Boolean passed;
+
+    // ---------- Timing ----------
+    private LocalDateTime startedAt;
+    private LocalDateTime submittedAt;
+    private Integer timeTakenSeconds;
+    private Integer remainingTimeSeconds;
+    private Integer examDurationInMinutes;
+
+    // ---------- Proctoring ----------
+    private Integer tabSwitches;
+    private Integer webcamViolations;
+    private Integer copyPasteCount;
+    private Boolean autoSubmitted;
+    private Boolean reviewed;
+
+    // ---------- Metadata ----------
+    private String notes;
+
+    // ---------- Answers ----------
+    private List<AttemptAnswerDTO> answers;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/AttemptResponse.java
+package com.oerms.attempt.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.oerms.attempt.enums.AttemptStatus;
+import lombok.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class AttemptResponse {
+
+    private UUID id;
+    private UUID examId;
+    private String examTitle;
+
+    private UUID studentId;
+    private String studentName;
+    private Integer attemptNumber;
+
+    private AttemptStatus status;
+
+    private Integer totalQuestions;
+    private Integer answeredQuestions;
+    private Integer flaggedQuestions;
+
+    private Integer totalMarks;
+    private Double obtainedMarks;
+    private Double percentage;
+    private Boolean passed;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+    private LocalDateTime startedAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+    private LocalDateTime submittedAt;
+    private Integer timeTakenSeconds;
+    private Integer remainingTimeSeconds;
+
+    private Integer tabSwitches;
+    private Integer webcamViolations;
+    private Boolean autoSubmitted;
+    private Boolean reviewed;
+
+    private String notes;
+
+    private List<AttemptAnswerResponse> answers;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/AttemptStatsResponse.java
+package com.oerms.attempt.dto;
+
+import lombok.*;
+import java.util.List;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AttemptStatsResponse {
+
+    private Long totalAttempts;
+    private Long completedAttempts;
+    private Long inProgressAttempts;
+
+    private Double averageScore;
+    private Integer averageTimeTaken;
+
+    private List<AttemptSummary> recentAttempts;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/AttemptSummary.java
+package com.oerms.attempt.dto;
+
+import com.oerms.attempt.enums.AttemptStatus;
+import lombok.*;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AttemptSummary {
+
+    private UUID id;
+    private UUID examId;
+    private String examTitle;
+
+    private Integer attemptNumber;
+    private AttemptStatus status;
+
+    private Integer answeredQuestions;
+    private Integer totalQuestions;
+
+    private Double obtainedMarks;
+    private Double percentage;
+
+    private LocalDateTime startedAt;
+    private LocalDateTime submittedAt;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/ExamAttemptStatistics.java
+package com.oerms.attempt.dto;
+
+import lombok.*;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ExamAttemptStatistics {
+
+    private UUID examId;
+    private String examTitle;
+
+    private Long totalAttempts;
+    private Long completedAttempts;
+    private Long inProgressAttempts;
+    private Long autoSubmittedAttempts;
+
+    private Double averageScore;
+    private Double highestScore;
+    private Double lowestScore;
+
+    private Double averageTimeSpentMinutes;
+
+    private Long passedCount;
+    private Long failedCount;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/SaveAnswerRequest.java
+package com.oerms.attempt.dto;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.Set;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+
+public class SaveAnswerRequest {
+    @NotNull
+    private UUID questionId;
+    private Set<String> selectedOptions;
+    private String answerText;
+    private Boolean flagged;
+    private Integer timeSpentSeconds;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/StartAttemptRequest.java
+package com.oerms.attempt.dto;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+public class StartAttemptRequest {
+    @NotNull(message = "Exam ID is required")
+    private UUID examId;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/dto/SubmitAttemptRequest.java
+package com.oerms.attempt.dto;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+public class SubmitAttemptRequest {
+    @NotNull private UUID attemptId;
+    private String notes;
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/entity/AttemptAnswer.java
+package com.oerms.attempt.entity;
+
+import com.oerms.common.entity.BaseEntity;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
+@Entity
+@Table(name = "attempt_answers", indexes = {
+    @Index(name = "idx_attempt_answer_attempt_id", columnList = "attempt_id"),
+    @Index(name = "idx_attempt_answer_question_id", columnList = "question_id")
+})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SQLDelete(sql = "UPDATE attempt_answers SET deleted = true WHERE id = ?")
+@SQLRestriction("deleted = false")
+public class AttemptAnswer extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "attempt_id", nullable = false)
+    private ExamAttempt attempt;
+
+    @Column(name = "question_id", nullable = false)
+    private UUID questionId;
+
+    @Column(name = "question_order")
+    private Integer questionOrder;
+
+    @ElementCollection
+    @CollectionTable(
+        name = "attempt_selected_options",
+        joinColumns = @JoinColumn(name = "attempt_answer_id")
+    )
+    @Column(name = "option_value") // Changed column name to reflect String values
+    @Builder.Default
+    private Set<String> selectedOptions = new HashSet<>(); // Changed type from UUID to String
+
+    @Column(name = "answer_text", length = 5000)
+    private String answerText;
+
+    @Column(name = "is_correct")
+    private Boolean isCorrect;
+
+    @Column(name = "marks_obtained")
+    private Double marksObtained;
+
+    @Column(name = "marks_allocated")
+    private Integer marksAllocated;
+
+    @Column(name = "time_spent_seconds")
+    private Integer timeSpentSeconds;
+
+    @Column(name = "flagged")
+    @Builder.Default
+    private Boolean flagged = false;
+
+    @Column(name = "answered_at")
+    private LocalDateTime answeredAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
+
+    @PrePersist
+    @PreUpdate
+    protected void onUpdate() {
+        if (getUpdatedAt() == null) {
+            setUpdatedAt(LocalDateTime.now());
+        }
+        if (answeredAt == null && (answerText != null || !selectedOptions.isEmpty())) {
+            answeredAt = LocalDateTime.now();
+        }
+    }
+
+    public boolean isAnswered() {
+        return (answerText != null && !answerText.trim().isEmpty()) ||
+               !selectedOptions.isEmpty();
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/entity/ExamAttempt.java
+package com.oerms.attempt.entity;
+
+import com.oerms.common.entity.BaseEntity;
+import com.oerms.attempt.enums.AttemptStatus;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction; // Changed from @Where
+import org.hibernate.annotations.Where;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "exam_attempts", indexes = {
+        @Index(name = "idx_attempt_student_id", columnList = "student_id"),
+        @Index(name = "idx_attempt_exam_id", columnList = "exam_id"),
+        @Index(name = "uk_exam_student_status", columnList = "exam_id, student_id, status, deleted", unique = true)
+})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SQLDelete(sql = "UPDATE exam_attempts SET deleted = true WHERE id = ?")
+@Where(clause = "deleted = false")
+public class ExamAttempt extends BaseEntity {
+
+    @Column(name = "exam_id", nullable = false)
+    private UUID examId;
+
+    @Column(name = "exam_title")
+    private String examTitle;
+
+    @Column(name = "student_id", nullable = false)
+    private UUID studentId;
+
+    @Column(name = "student_name")
+    private String studentName;
+
+    @Column(name = "attempt_number", nullable = false)
+    private Integer attemptNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private AttemptStatus status = AttemptStatus.IN_PROGRESS;
+
+    @Column(name = "total_questions", nullable = false)
+    private Integer totalQuestions;
+
+    @Column(name = "answered_questions")
+    @Builder.Default
+    private Integer answeredQuestions = 0;
+
+    @Column(name = "flagged_questions")
+    @Builder.Default
+    private Integer flaggedQuestions = 0;
+
+    @Column(name = "total_marks", nullable = false)
+    private Integer totalMarks;
+
+    @Column(name = "obtained_marks")
+    private Double obtainedMarks;
+
+    @Column(name = "percentage")
+    private Double percentage;
+
+    @Column(name = "started_at", nullable = false)
+    private LocalDateTime startedAt;
+
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
+
+    @Column(name = "time_taken_seconds")
+    private Integer timeTakenSeconds;
+
+    @Column(name = "remaining_time_seconds")
+    private Integer remainingTimeSeconds;
+
+    @Column(name = "exam_duration_in_minutes") // Added field
+    private Integer examDurationInMinutes;
+
+    @Column(name = "ip_address", length = 50)
+    private String ipAddress;
+
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
+
+    @Column(name = "browser_info", length = 200)
+    private String browserInfo;
+
+    @Column(name = "tab_switches")
+    @Builder.Default
+    private Integer tabSwitches = 0;
+
+    @Column(name = "webcam_violations")
+    @Builder.Default
+    private Integer webcamViolations = 0;
+
+    @Column(name = "copy_paste_count")
+    @Builder.Default
+    private Integer copyPasteCount = 0;
+
+    @Column(name = "auto_submitted")
+    @Builder.Default
+    private Boolean autoSubmitted = false;
+
+    @Column(name = "reviewed")
+    @Builder.Default
+    private Boolean reviewed = false;
+
+    @Column(name = "passed")
+    private Boolean passed;
+
+    @Column(length = 1000)
+    private String notes;
+
+
+    @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<AttemptAnswer> answers = new ArrayList<>();
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
+
+    // Helper methods
+    public void addAnswer(AttemptAnswer answer) {
+        answers.add(answer);
+        answer.setAttempt(this);
+    }
+
+    public void incrementTabSwitches() {
+        this.tabSwitches++;
+    }
+
+    public void incrementWebcamViolations() {
+        this.webcamViolations++;
+    }
+
+    public void incrementCopyPaste() {
+        this.copyPasteCount++;
+    }
+
+    public void updateAnsweredCount() {
+        this.answeredQuestions = (int) answers.stream()
+            .filter(a -> a.getAnswerText() != null || !a.getSelectedOptions().isEmpty())
+            .count();
+    }
+
+    public void updateFlaggedCount() {
+        this.flaggedQuestions = (int) answers.stream()
+            .filter(AttemptAnswer::getFlagged)
+            .count();
+    }
+
+    public Integer calculateTimeTaken() {
+        if (startedAt != null && submittedAt != null) {
+            return (int) java.time.Duration.between(startedAt, submittedAt).getSeconds();
+        }
+        return null;
+    }
+
+    public boolean hasViolations() {
+        return tabSwitches > 0 || webcamViolations > 0 || copyPasteCount > 5;
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/enums/AttemptStatus.java
+package com.oerms.attempt.enums;
+
+public enum AttemptStatus {
+    IN_PROGRESS,     // Exam is being taken
+    SUBMITTED,       // Student submitted manually
+    AUTO_SUBMITTED,  // Auto-submitted due to time expiry
+    UNDER_REVIEW,    // Being reviewed/graded
+    COMPLETED,       // Grading completed
+    GRADED,         // same as completed
+    ABANDONED        // Student left without submitting
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/kafka/AttemptEventProducer.java
+package com.oerms.attempt.kafka;
+
+import com.oerms.attempt.entity.ExamAttempt;
+import com.oerms.attempt.mapper.AttemptMapper;
+import com.oerms.common.dto.AttemptDTO;
+import com.oerms.common.event.AttemptEvent;
+import com.oerms.common.enums.AttemptEventType;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class AttemptEventProducer {
+
+    private final KafkaTemplate<String, AttemptEvent> kafkaTemplate;
+
+    private static final String ATTEMPT_STARTED = "attempt-started-topic";
+    private static final String ATTEMPT_SUBMITTED = "attempt-submitted-topic";
+    private static final String ATTEMPT_AUTO_SUBMITTED = "attempt-auto-submitted-topic";
+
+    public void publishAttemptStarted(ExamAttempt a) {
+        send(a, AttemptEventType.ATTEMPT_STARTED, ATTEMPT_STARTED);
+    }
+
+    public void publishAttemptSubmitted(ExamAttempt a) {
+        send(a, AttemptEventType.ATTEMPT_SUBMITTED, ATTEMPT_SUBMITTED);
+    }
+
+    public void publishAttemptAutoSubmitted(ExamAttempt a) {
+        send(a, AttemptEventType.ATTEMPT_AUTO_SUBMITTED, ATTEMPT_AUTO_SUBMITTED);
+    }
+
+    private void send(ExamAttempt a, AttemptEventType type, String topic) {
+        AttemptDTO attemptDto = AttemptMapper.toCommonDto(a);
+
+        AttemptEvent event = AttemptEvent.builder()
+                .eventId(UUID.randomUUID())
+                .eventType(type)
+                .eventTime(LocalDateTime.now())
+                .sourceService("attempt-service")
+                .attemptId(a.getId())
+                .attemptDTO(attemptDto)
+                .build();
+
+        kafkaTemplate.send(topic, a.getId().toString(), event);
+        log.info("Published {} event for attemptId={}", type, a.getId());
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/mapper/AttemptMapper.java
+package com.oerms.attempt.mapper;
+
+import com.oerms.attempt.dto.*;
+import com.oerms.attempt.entity.AttemptAnswer;
+import com.oerms.attempt.entity.ExamAttempt;
+import com.oerms.common.dto.AttemptDTO;
+import org.springframework.stereotype.Component;
+
+import java.util.stream.Collectors;
+
+@Component
+public class AttemptMapper {
+
+    // ====================================================================================================
+    // INTERNAL DTO (Service-level)
+    // ====================================================================================================
+    public AttemptDto toDTO(ExamAttempt attempt) {
+        if (attempt == null) return null;
+
+        return AttemptDto.builder()
+                .id(attempt.getId())
+                .examId(attempt.getExamId())
+                .examTitle(attempt.getExamTitle())
+                .studentId(attempt.getStudentId())
+                .studentName(attempt.getStudentName())
+                .attemptNumber(attempt.getAttemptNumber())
+                .status(attempt.getStatus())
+                .totalQuestions(attempt.getTotalQuestions())
+                .answeredQuestions(attempt.getAnsweredQuestions())
+                .flaggedQuestions(attempt.getFlaggedQuestions())
+                .totalMarks(attempt.getTotalMarks())
+                .obtainedMarks(attempt.getObtainedMarks())
+                .percentage(attempt.getPercentage())
+                .passed(attempt.getPassed())
+                .startedAt(attempt.getStartedAt())
+                .submittedAt(attempt.getSubmittedAt())
+                .timeTakenSeconds(attempt.getTimeTakenSeconds())
+                .remainingTimeSeconds(attempt.getRemainingTimeSeconds())
+                .examDurationInMinutes(attempt.getExamDurationInMinutes())
+                .tabSwitches(attempt.getTabSwitches())
+                .webcamViolations(attempt.getWebcamViolations())
+                .copyPasteCount(attempt.getCopyPasteCount())
+                .autoSubmitted(attempt.getAutoSubmitted())
+                .reviewed(attempt.getReviewed())
+                .notes(attempt.getNotes())
+                .answers(
+                        attempt.getAnswers()
+                                .stream()
+                                .map(this::toAnswerDTO)
+                                .collect(Collectors.toList())
+                )
+                .build();
+    }
+
+    // ====================================================================================================
+    // INTERNAL ANSWER DTO
+    // ====================================================================================================
+    public AttemptAnswerDTO toAnswerDTO(AttemptAnswer answer) {
+        if (answer == null) return null;
+
+        return AttemptAnswerDTO.builder()
+                .id(answer.getId())
+                .questionId(answer.getQuestionId())
+                .questionOrder(answer.getQuestionOrder())
+                .selectedOptions(answer.getSelectedOptions())
+                .answerText(answer.getAnswerText())
+                .correct(answer.getIsCorrect())
+                .marksAllocated(answer.getMarksAllocated())
+                .marksObtained(answer.getMarksObtained())
+                .timeSpentSeconds(answer.getTimeSpentSeconds())
+                .flagged(answer.getFlagged())
+                .answeredAt(answer.getAnsweredAt())
+                .build();
+    }
+
+    // ====================================================================================================
+    // API RESPONSE (Controller output)
+    // ====================================================================================================
+    public AttemptResponse toResponse(ExamAttempt attempt) {
+        if (attempt == null) return null;
+
+        return AttemptResponse.builder()
+                .id(attempt.getId())
+                .examId(attempt.getExamId())
+                .examTitle(attempt.getExamTitle())
+                .studentId(attempt.getStudentId())
+                .studentName(attempt.getStudentName())
+                .attemptNumber(attempt.getAttemptNumber())
+                .status(attempt.getStatus())
+                .totalQuestions(attempt.getTotalQuestions())
+                .answeredQuestions(attempt.getAnsweredQuestions())
+                .flaggedQuestions(attempt.getFlaggedQuestions())
+                .totalMarks(attempt.getTotalMarks())
+                .obtainedMarks(attempt.getObtainedMarks())
+                .percentage(attempt.getPercentage())
+                .passed(attempt.getPassed())
+                .startedAt(attempt.getStartedAt())
+                .submittedAt(attempt.getSubmittedAt())
+                .timeTakenSeconds(attempt.getTimeTakenSeconds())
+                .remainingTimeSeconds(attempt.getRemainingTimeSeconds())
+                .tabSwitches(attempt.getTabSwitches())
+                .webcamViolations(attempt.getWebcamViolations())
+                .autoSubmitted(attempt.getAutoSubmitted())
+                .reviewed(attempt.getReviewed())
+                .notes(attempt.getNotes())
+                .answers(
+                        attempt.getAnswers()
+                                .stream()
+                                .map(this::toAnswerResponse)
+                                .collect(Collectors.toList())
+                )
+                .build();
+    }
+
+    // ====================================================================================================
+    // ANSWER RESPONSE (API)
+    // ====================================================================================================
+    public AttemptAnswerResponse toAnswerResponse(AttemptAnswer answer) {
+        if (answer == null) return null;
+
+        return AttemptAnswerResponse.builder()
+                .questionId(answer.getQuestionId())
+                .questionOrder(answer.getQuestionOrder())
+                .selectedOptions(answer.getSelectedOptions())
+                .answerText(answer.getAnswerText())
+                .correct(answer.getIsCorrect())
+                .marksAllocated(answer.getMarksAllocated())
+                .marksObtained(answer.getMarksObtained())
+                .timeSpentSeconds(answer.getTimeSpentSeconds())
+                .flagged(answer.getFlagged())
+                .answeredAt(answer.getAnsweredAt())
+                .build();
+    }
+
+    // ====================================================================================================
+    // SUMMARY (Dashboard / List)
+    // ====================================================================================================
+    public AttemptSummary toSummary(ExamAttempt attempt) {
+        if (attempt == null) return null;
+
+        return AttemptSummary.builder()
+                .id(attempt.getId())
+                .examId(attempt.getExamId())
+                .examTitle(attempt.getExamTitle())
+                .attemptNumber(attempt.getAttemptNumber())
+                .status(attempt.getStatus())
+                .answeredQuestions(attempt.getAnsweredQuestions())
+                .totalQuestions(attempt.getTotalQuestions())
+                .obtainedMarks(attempt.getObtainedMarks())
+                .percentage(attempt.getPercentage())
+                .startedAt(attempt.getStartedAt())
+                .submittedAt(attempt.getSubmittedAt())
+                .build();
+    }
+
+    // ====================================================================================================
+    // COMMON DTO (Kafka / cross-service)
+    // ====================================================================================================
+    public static AttemptDTO toCommonDto(ExamAttempt attempt) {
+        if (attempt == null) return null;
+
+        return AttemptDTO.builder()
+                .id(attempt.getId())
+                .examId(attempt.getExamId())
+                .examTitle(attempt.getExamTitle())
+                .studentId(attempt.getStudentId())
+                .studentName(attempt.getStudentName())
+                .attemptNumber(attempt.getAttemptNumber())
+                .status(attempt.getStatus() == null ? null : com.oerms.common.enums.AttemptStatus.valueOf(attempt.getStatus().name()))
+                .startedAt(attempt.getStartedAt())
+                .submittedAt(attempt.getSubmittedAt())
+                .timeTakenSeconds(attempt.getTimeTakenSeconds())
+                .totalMarks(attempt.getTotalMarks())
+                .obtainedMarks(attempt.getObtainedMarks())
+                .percentage(attempt.getPercentage())
+                .passed(attempt.getPassed())
+                .totalQuestions(attempt.getTotalQuestions())
+                .tabSwitches(attempt.getTabSwitches())
+                .webcamViolations(attempt.getWebcamViolations())
+                .autoSubmitted(attempt.getAutoSubmitted())
+                .answers(
+                        attempt.getAnswers() == null ? null :
+                                attempt.getAnswers().stream()
+                                        .map(answer -> com.oerms.common.dto.AttemptAnswerDTO.builder()
+                                                .id(answer.getId())
+                                                .questionId(answer.getQuestionId())
+                                                .questionOrder(answer.getQuestionOrder())
+                                                .selectedOptions(answer.getSelectedOptions())
+                                                .answerText(answer.getAnswerText())
+                                                .correct(answer.getIsCorrect())
+                                                .marksAllocated(answer.getMarksAllocated())
+                                                .marksObtained(answer.getMarksObtained())
+                                                .timeSpentSeconds(answer.getTimeSpentSeconds())
+                                                .flagged(answer.getFlagged())
+                                                .answeredAt(answer.getAnsweredAt())
+                                                .build()
+                                        )
+                                        .toList()
+                )
+                .notes(attempt.getNotes())
+                .build();
+    }
+
+
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/repository/AttemptAnswerRepository.java
+package com.oerms.attempt.repository;
+
+import com.oerms.attempt.entity.AttemptAnswer;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface AttemptAnswerRepository extends JpaRepository<AttemptAnswer, UUID> {
+    List<AttemptAnswer> findByAttemptIdOrderByQuestionOrder(UUID attemptId);
+    Optional<AttemptAnswer> findByAttemptIdAndQuestionId(UUID attemptId, UUID questionId);
+    long countByAttemptIdAndIsCorrect(UUID attemptId, Boolean isCorrect);
+
+    @Query("SELECT SUM(aa.marksObtained) FROM AttemptAnswer aa WHERE aa.attempt.id = :attemptId")
+    Double sumMarksByAttemptId(@Param("attemptId") UUID attemptId);
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/repository/AttemptRepository.java
+package com.oerms.attempt.repository;
+
+import com.oerms.attempt.entity.ExamAttempt;
+import com.oerms.attempt.enums.AttemptStatus;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface AttemptRepository extends JpaRepository<ExamAttempt, UUID> {
+
+    Page<ExamAttempt> findByStudentId(UUID studentId, Pageable pageable);
+    Page<ExamAttempt> findByExamId(UUID examId, Pageable pageable);
+    Page<ExamAttempt> findByExamIdAndStudentId(UUID examId, UUID studentId, Pageable pageable);
+
+    List<ExamAttempt> findByExamIdAndStudentIdOrderByAttemptNumberDesc(UUID examId, UUID studentId);
+
+    // Pessimistic lock to prevent duplicate IN_PROGRESS attempts
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT a FROM ExamAttempt a
+        WHERE a.examId = :examId
+          AND a.studentId = :studentId
+          AND a.status = 'IN_PROGRESS'
+          AND a.deleted = false
+        ORDER BY a.startedAt DESC
+        """)
+    Optional<ExamAttempt> findActiveAttemptForStudent(
+            @Param("examId") UUID examId,
+            @Param("studentId") UUID studentId
+    );
+
+    long countByExamIdAndStudentId(UUID examId, UUID studentId);
+    long countByExamId(UUID examId);
+    long countByStudentId(UUID studentId);
+    Page<ExamAttempt> findByStatus(AttemptStatus status, Pageable pageable);
+
+    List<ExamAttempt> findAllByExamId(UUID examId);
+
+    @Query(value = "SELECT * FROM exam_attempts a WHERE a.status = 'IN_PROGRESS' AND a.started_at + (a.exam_duration_in_minutes * INTERVAL '1 minute') < NOW()", nativeQuery = true)
+    List<ExamAttempt> findStalledAttempts();
+
+    @Query("SELECT AVG(a.obtainedMarks) FROM ExamAttempt a WHERE a.examId = :examId AND a.status = 'COMPLETED'")
+    Double getAverageScoreByExamId(@Param("examId") UUID examId);
+
+    @Query("SELECT a FROM ExamAttempt a WHERE a.examId = :examId ORDER BY a.obtainedMarks DESC")
+    List<ExamAttempt> findTopScoresByExamId(@Param("examId") UUID examId, Pageable pageable);
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/security/OAuth2ClientCredentialsManager.java
+package com.oerms.attempt.security;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Instant;
+import java.util.Map;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class OAuth2ClientCredentialsManager {
+
+    private final RestTemplate restTemplate;
+
+    @Value("${oauth2.client.token-uri}")
+    private String tokenUri;
+
+    @Value("${oauth2.client.client-id}")
+    private String clientId;
+
+    @Value("${oauth2.client.client-secret}")
+    private String clientSecret;
+
+    @Value("${oauth2.client.scope:}")
+    private String scope;
+
+    private volatile String accessToken;
+    private volatile Instant expiry;
+
+    public synchronized String getToken() {
+        if (isTokenInvalid()) {
+            try {
+                log.info("M2M token is invalid or expired. Fetching a new one for clientId: {}", clientId);
+                fetchNewToken();
+            } catch (HttpClientErrorException e) {
+                log.error("Error fetching M2M token. Status: {}, Body: {}", e.getStatusCode(), e.getResponseBodyAsString());
+                throw new IllegalStateException("Failed to obtain M2M token", e);
+            } catch (Exception e) {
+                log.error("An unexpected error occurred while fetching M2M token", e);
+                throw new IllegalStateException("Failed to obtain M2M token", e);
+            }
+        } else {
+            log.debug("Using cached M2M token.");
+        }
+        return accessToken;
+    }
+
+    private boolean isTokenInvalid() {
+        return accessToken == null || Instant.now().isAfter(expiry);
+    }
+
+    private void fetchNewToken() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        String form = "grant_type=client_credentials&client_id=" + encode(clientId)
+                + "&client_secret=" + encode(clientSecret);
+        if (scope != null && !scope.isBlank()) {
+            form += "&scope=" + encode(scope);
+        }
+
+        HttpEntity<String> request = new HttpEntity<>(form, headers);
+
+        log.debug("Requesting M2M token from URI: {}", tokenUri);
+        Map<String, Object> resp = restTemplate.exchange(
+                tokenUri,
+                HttpMethod.POST,
+                request,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+        ).getBody();
+
+        if (resp == null || resp.get("access_token") == null) {
+            log.error("M2M token response is invalid. Response: {}", resp);
+            throw new IllegalStateException("Failed to obtain client_credentials token: Invalid response from server.");
+        }
+
+        accessToken = (String) resp.get("access_token");
+        Number expiresIn = (Number) resp.getOrDefault("expires_in", 3600);
+        expiry = Instant.now().plusSeconds(expiresIn.longValue() - 20); // Proactive refresh
+        log.info("Successfully fetched new M2M token. Expires in {} seconds.", expiresIn);
+    }
+
+    private static String encode(String v) {
+        return java.net.URLEncoder.encode(v, java.nio.charset.StandardCharsets.UTF_8);
+    }
+}
+
+oerms-backend/attempt-service/src/main/java/com/oerms/attempt/service/AttemptService.java
+package com.oerms.attempt.service;
+
+import com.oerms.attempt.client.*;
+import com.oerms.attempt.dto.*;
+import com.oerms.attempt.entity.*;
+import com.oerms.attempt.enums.AttemptStatus;
+import com.oerms.attempt.kafka.AttemptEventProducer;
+import com.oerms.attempt.mapper.AttemptMapper;
+import com.oerms.attempt.repository.*;
+import com.oerms.common.dto.ApiResponse;
+import com.oerms.common.dto.ExamDTO;
+import com.oerms.common.dto.QuestionDTO;
+import com.oerms.common.dto.StudentQuestionDTO;
+import com.oerms.common.exception.*;
+import com.oerms.common.util.JwtUtils;
+import feign.FeignException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.dao.DataIntegrityViolationException; // Import DataIntegrityViolationException
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.oerms.common.constant.Constants.Roles.ROLE_ADMIN;
+import static com.oerms.common.constant.Constants.Roles.ROLE_TEACHER;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class AttemptService {
+
+    private final AttemptRepository attemptRepository;
+    private final AttemptAnswerRepository answerRepository;
+    private final AttemptMapper attemptMapper;
+    private final ExamServiceClient examServiceClient;
+    private final StudentQuestionServiceClient studentQuestionServiceClient;
+    private final InternalQuestionServiceClient internalQuestionServiceClient;
+    private final AttemptEventProducer eventProducer;
+
+    @Transactional
+    public AttemptResponse startAttempt(StartAttemptRequest request, String ipAddress,
+                                        String userAgent, Authentication authentication) {
+        UUID studentId = JwtUtils.getUserId(authentication);
+        String studentName = JwtUtils.getUsername(authentication);
+
+        log.info("Attempt start initiated for examId: {} by studentId: {}", request.getExamId(), studentId);
+
+        // Use pessimistic lock to check for active attempt
+        Optional<ExamAttempt> activeAttempt = attemptRepository
+                .findActiveAttemptForStudent(request.getExamId(), studentId);
+
+        if (activeAttempt.isPresent()) {
+            log.warn("Student {} already has an active attempt for exam {}. Returning existing attempt.", studentId, request.getExamId());
+            return attemptMapper.toResponse(activeAttempt.get());
+        }
+
+        // Fetch exam details
+        ExamDTO exam = getExamOrThrow(request.getExamId());
+        validateExamForAttempt(exam);
+
+        long attemptCount = attemptRepository.countByExamIdAndStudentId(request.getExamId(), studentId);
+        List<StudentQuestionDTO> questions = getExamQuestionsForStudentOrThrow(request.getExamId(), exam.getShuffleQuestions());
+        if (questions.isEmpty()) {
+            throw new BadRequestException("Exam has no questions");
+        }
+
+        ExamAttempt attempt = createNewAttempt(request, studentId, studentName, ipAddress, userAgent, exam, questions, attemptCount);
+
+        // Save new attempt
+        attempt = attemptRepository.saveAndFlush(attempt);
+        log.info("New attempt created and saved with ID: {}", attempt.getId());
+
+        eventProducer.publishAttemptStarted(attempt);
+        log.info("Attempt start process completed for attemptId: {}", attempt.getId());
+        return attemptMapper.toResponse(attempt);
+    }
+
+
+    @Transactional
+    @CacheEvict(value = "attempts", key = "#attemptId")
+    public AttemptAnswerResponse saveAnswer(UUID attemptId, SaveAnswerRequest request,
+                                            Authentication authentication) {
+        UUID studentId = JwtUtils.getUserId(authentication);
+        log.debug("Saving answer for attemptId: {}, questionId: {}, studentId: {}", attemptId, request.getQuestionId(), studentId);
+
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            log.warn("Attempt to save answer for non-active attemptId: {}. Status: {}", attemptId, attempt.getStatus());
+            throw new BadRequestException("Cannot save answer for non-active attempt");
+        }
+
+        AttemptAnswer answer = answerRepository
+                .findByAttemptIdAndQuestionId(attemptId, request.getQuestionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Question not found in attempt: " + request.getQuestionId()));
+
+        updateAnswerFields(answer, request);
+        answerRepository.save(answer);
+
+        attempt.updateAnsweredCount();
+        attempt.updateFlaggedCount();
+        attemptRepository.save(attempt);
+
+        log.info("Answer saved successfully for attemptId: {}, questionId: {}", attemptId, request.getQuestionId());
+        // eventProducer.publishAnswerSaved(attempt, answer); // Commented out to fix build
+        return attemptMapper.toAnswerResponse(answer);
+    }
+
+    @Transactional
+    @CacheEvict(value = "attempts", key = "#request.attemptId")
+    public AttemptResponse submitAttempt(SubmitAttemptRequest request, Authentication authentication) {
+        UUID studentId = JwtUtils.getUserId(authentication);
+        log.info("Attempt submission initiated for attemptId: {} by studentId: {}", request.getAttemptId(), studentId);
+
+        ExamAttempt attempt = getAttemptEntity(request.getAttemptId());
+        verifyAttemptOwnership(attempt, studentId);
+
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            log.warn("Attempt to submit an already submitted or completed attemptId: {}. Status: {}", attempt.getId(), attempt.getStatus());
+            throw new BadRequestException("Attempt already submitted");
+        }
+
+        attempt.setStatus(AttemptStatus.SUBMITTED);
+        attempt.setSubmittedAt(LocalDateTime.now());
+        attempt.setTimeTakenSeconds(attempt.calculateTimeTaken());
+        attempt.setNotes(request.getNotes());
+        attempt.setAutoSubmitted(false);
+        log.info("Attempt {} marked as SUBMITTED.", attempt.getId());
+
+        autoGradeAttempt(attempt);
+
+        attemptRepository.save(attempt);
+        log.info("Attempt submitted and graded successfully for attemptId: {}. Final Score: {}/{}",
+                attempt.getId(), attempt.getObtainedMarks(), attempt.getTotalMarks());
+
+        eventProducer.publishAttemptSubmitted(attempt);
+        return attemptMapper.toResponse(attempt);
+    }
+
+    private void autoGradeAttempt(ExamAttempt attempt) {
+        log.info("Starting auto-grading process for attemptId: {}", attempt.getId());
+
+        List<UUID> questionIds = attempt.getAnswers().stream()
+                .map(AttemptAnswer::getQuestionId)
+                .toList();
+
+        if (questionIds.isEmpty()) {
+            log.warn("No answers found to grade for attemptId: {}", attempt.getId());
+            attempt.setObtainedMarks(0.0);
+            attempt.setPercentage(0.0);
+            return;
+        }
+
+        log.debug("Fetching {} questions for grading attemptId: {}", questionIds.size(), attempt.getId());
+        Map<UUID, QuestionDTO> questionMap = fetchQuestionsForGrading(attempt.getId(), questionIds);
+
+        if (questionMap.isEmpty()) {
+            log.error("Failed to fetch any questions for grading attemptId: {}. Grading cannot proceed.", attempt.getId());
+            return;
+        }
+
+        double totalMarksObtained = 0.0;
+        for (AttemptAnswer answer : attempt.getAnswers()) {
+            QuestionDTO question = questionMap.get(answer.getQuestionId());
+            if (question == null) {
+                log.warn("Question with ID {} not found for answer in attemptId: {}. Skipping this answer.", answer.getQuestionId(), attempt.getId());
+                continue;
+            }
+            totalMarksObtained += gradeSingleAnswer(answer, question);
+        }
+
+        attempt.setObtainedMarks(totalMarksObtained);
+        if (attempt.getTotalMarks() != null && attempt.getTotalMarks() > 0) {
+            attempt.setPercentage((totalMarksObtained / attempt.getTotalMarks()) * 100);
+        } else {
+            attempt.setPercentage(0.0);
+        }
+        attempt.updateAnsweredCount();
+        log.info("Auto-grading completed for attemptId: {}. Total marks obtained: {}", attempt.getId(), totalMarksObtained);
+    }
+
+    private double gradeSingleAnswer(AttemptAnswer answer, QuestionDTO question) {
+        log.debug("Entering gradeSingleAnswer for questionId: {}, type: {}", question.getId(), question.getQuestionType());
+        String questionType = question.getQuestionType();
+        boolean isCorrect = false;
+
+        answer.setIsCorrect(false);
+        answer.setMarksObtained(0.0);
+
+        if ("MCQ".equals(questionType)) {
+            String studentAnswer = answer.getAnswerText();
+            // If answerText is empty, check if the answer was sent in selectedOptions
+            if (!StringUtils.hasText(studentAnswer) && answer.getSelectedOptions() != null && answer.getSelectedOptions().size() == 1) {
+                studentAnswer = answer.getSelectedOptions().iterator().next();
+            }
+            log.debug("MCQ Grading - Question ID: {}, Student Answer: '{}', Correct Answer: '{}'",
+                    question.getId(), studentAnswer, question.getCorrectAnswer());
+            isCorrect = isTextAnswerCorrect(studentAnswer, question.getCorrectAnswer());
+            log.debug("MCQ Grading - Question ID: {}, Is Correct: {}", question.getId(), isCorrect);
+        } else if ("TRUE_FALSE".equals(questionType)) {
+            log.debug("TRUE_FALSE Grading - Question ID: {}, Student Answer: '{}', Correct Answer: '{}'",
+                    question.getId(), answer.getAnswerText(), question.getCorrectAnswer());
+            isCorrect = isTextAnswerCorrect(answer.getAnswerText(), question.getCorrectAnswer());
+            log.debug("TRUE_FALSE Grading - Question ID: {}, Is Correct: {}", question.getId(), isCorrect);
+        } else if ("MULTIPLE_ANSWER".equals(questionType)) {
+            log.debug("MULTIPLE_ANSWER Grading - Question ID: {}, Student Selected Options: '{}', Correct Answer: '{}'",
+                    question.getId(), answer.getSelectedOptions(), question.getCorrectAnswer());
+            isCorrect = isMultipleAnswerCorrect(answer, question);
+            log.debug("MULTIPLE_ANSWER Grading - Question ID: {}, Is Correct: {}", question.getId(), isCorrect);
+        } else {
+            log.warn("Unknown question type '{}' for questionId: {}. Skipping grading, marks set to 0.", questionType, question.getId());
+        }
+
+        if (isCorrect) {
+            answer.setMarksObtained(answer.getMarksAllocated().doubleValue());
+        }
+        answer.setIsCorrect(isCorrect);
+        log.trace("Graded questionId: {}. Correct: {}. Marks: {}", question.getId(), isCorrect, answer.getMarksObtained());
+        return answer.getMarksObtained();
+    }
+
+    // Other methods...
+
+    private ExamAttempt createNewAttempt(StartAttemptRequest request, UUID studentId, String studentName, String ipAddress, String userAgent, ExamDTO exam, List<StudentQuestionDTO> questions, long attemptCount) {
+        ExamAttempt attempt = ExamAttempt.builder()
+                .examId(request.getExamId())
+                .examTitle(exam.getTitle())
+                .studentId(studentId)
+                .studentName(studentName)
+                .attemptNumber((int) attemptCount + 1)
+                .status(AttemptStatus.IN_PROGRESS)
+                .totalQuestions(questions.size())
+                .totalMarks(questions.stream().filter(q -> q.getMarks() != null).mapToInt(StudentQuestionDTO::getMarks).sum())
+                .startedAt(LocalDateTime.now())
+                .examDurationInMinutes(exam.getDuration()) // Set the duration
+                .ipAddress(ipAddress)
+                .userAgent(userAgent)
+                .build();
+
+        for (int i = 0; i < questions.size(); i++) {
+            StudentQuestionDTO question = questions.get(i);
+            AttemptAnswer answer = AttemptAnswer.builder()
+                    .questionId(question.getId())
+                    .questionOrder(i)
+                    .marksAllocated(question.getMarks())
+                    .flagged(false)
+                    .selectedOptions(new HashSet<>())
+                    .build();
+            attempt.addAnswer(answer);
+        }
+        return attempt;
+    }
+
+    @Transactional
+    public void autoSubmitExpiredAttempts() {
+        List<ExamAttempt> stalledAttempts = attemptRepository.findStalledAttempts();
+
+        if (stalledAttempts.isEmpty()) {
+            log.info("No expired attempts to auto-submit.");
+            return;
+        }
+        log.info("Found {} expired attempts to auto-submit.", stalledAttempts.size());
+
+        for (ExamAttempt attempt : stalledAttempts) {
+            log.warn("Auto-submitting attemptId: {} which started at {}", attempt.getId(), attempt.getStartedAt());
+            attempt.setStatus(AttemptStatus.AUTO_SUBMITTED);
+            attempt.setSubmittedAt(LocalDateTime.now());
+            attempt.setAutoSubmitted(true);
+            autoGradeAttempt(attempt);
+            attemptRepository.save(attempt);
+            eventProducer.publishAttemptAutoSubmitted(attempt);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = "attempts", key = "#attemptId")
+    public AttemptResponse getAttempt(UUID attemptId, Authentication authentication) {
+        log.debug("Fetching attempt details for attemptId: {}", attemptId);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        UUID currentUserId = JwtUtils.getUserId(authentication);
+        String role = JwtUtils.getRole(authentication);
+
+        if (!attempt.getStudentId().equals(currentUserId) && !ROLE_ADMIN.equals(role) && !ROLE_TEACHER.equals(role)) {
+            log.warn("Unauthorized attempt to view attemptId: {} by userId: {}", attemptId, currentUserId);
+            throw new UnauthorizedException("Not authorized to view this attempt");
+        }
+        return attemptMapper.toResponse(attempt);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AttemptAnswerResponse> getAttemptAnswers(UUID attemptId, Authentication authentication) {
+        log.debug("Fetching answers for attempt: {}", attemptId);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        UUID currentUserId = JwtUtils.getUserId(authentication);
+        String role = JwtUtils.getRole(authentication);
+
+        if (!attempt.getStudentId().equals(currentUserId) && !ROLE_ADMIN.equals(role) && !ROLE_TEACHER.equals(role)) {
+            log.warn("Unauthorized attempt to view answers for attemptId: {} by userId: {}", attemptId, currentUserId);
+            throw new UnauthorizedException("Not authorized to view this attempt");
+        }
+        return attempt.getAnswers().stream()
+                .sorted(Comparator.comparingInt(AttemptAnswer::getQuestionOrder))
+                .map(attemptMapper::toAnswerResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AttemptSummary> getStudentAttempts(Pageable pageable, Authentication authentication) {
+        UUID studentId = JwtUtils.getUserId(authentication);
+        log.debug("Fetching attempts for student: {}", studentId);
+        return attemptRepository.findByStudentId(studentId, pageable).map(attemptMapper::toSummary);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AttemptSummary> getStudentExamAttempts(UUID examId, Pageable pageable, Authentication authentication) {
+        UUID studentId = JwtUtils.getUserId(authentication);
+        log.debug("Fetching attempts for student: {} and exam: {}", studentId, examId);
+        return attemptRepository.findByExamIdAndStudentId(examId, studentId, pageable).map(attemptMapper::toSummary);
+    }
+
+    @Transactional(readOnly = true)
+    public Long getStudentAttemptsCount(Authentication authentication) {
+        UUID studentId = JwtUtils.getUserId(authentication);
+        log.debug("Counting attempts for student: {}", studentId);
+        return attemptRepository.countByStudentId(studentId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AttemptSummary> getExamAttempts(UUID examId, Pageable pageable, Authentication authentication) {
+        log.debug("Fetching attempts for exam: {}", examId);
+        verifyTeacherOrAdminRole(authentication);
+        return attemptRepository.findByExamId(examId, pageable).map(attemptMapper::toSummary);
+    }
+
+    @Transactional(readOnly = true)
+    public Long getExamAttemptsCount(UUID examId, Authentication authentication) {
+        log.debug("Counting attempts for exam: {}", examId);
+        verifyTeacherOrAdminRole(authentication);
+        return attemptRepository.countByExamId(examId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AttemptSummary> getStudentAttemptsAdmin(UUID studentId, Pageable pageable) {
+        log.debug("Admin fetching attempts for student: {}", studentId);
+        return attemptRepository.findByStudentId(studentId, pageable).map(attemptMapper::toSummary);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AttemptSummary> getAllAttempts(Pageable pageable) {
+        log.debug("Admin fetching all attempts");
+        return attemptRepository.findAll(pageable).map(attemptMapper::toSummary);
+    }
+
+    @Transactional(readOnly = true)
+    public ExamAttemptStatistics getExamAttemptStatistics(UUID examId, Authentication authentication) {
+        log.debug("Calculating statistics for exam: {}", examId);
+        verifyTeacherOrAdminRole(authentication);
+        // ... (rest of the method)
+        return new ExamAttemptStatistics();
+    }
+
+    @Transactional
+    public void recordTabSwitch(UUID attemptId, Authentication authentication) {
+        UUID studentId = JwtUtils.getUserId(authentication);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+        attempt.incrementTabSwitches();
+        attemptRepository.save(attempt);
+        log.warn("Tab switch recorded for attemptId: {}. Total: {}", attemptId, attempt.getTabSwitches());
+    }
+
+    @Transactional
+    public void recordWebcamViolation(UUID attemptId, Authentication authentication) {
+        UUID studentId = JwtUtils.getUserId(authentication);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+        attempt.incrementWebcamViolations();
+        attemptRepository.save(attempt);
+        log.warn("Webcam violation recorded for attemptId: {}. Total: {}", attemptId, attempt.getWebcamViolations());
+    }
+
+    private ExamAttempt getAttemptEntity(UUID attemptId) {
+        return attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt not found with id: " + attemptId));
+    }
+
+    private ExamDTO getExamOrThrow(UUID examId) {
+        try {
+            log.debug("Fetching exam details from exam-service for examId: {}", examId);
+            ApiResponse<ExamDTO> response = examServiceClient.getExam(examId);
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                log.error("Invalid response from exam-service for examId: {}. Response: {}", examId, response);
+                throw new ResourceNotFoundException("Exam not found with id: " + examId);
+            }
+            return response.getData();
+        } catch (FeignException e) {
+            log.error("Feign error fetching exam details for examId: {}. Status: {}, Body: {}", examId, e.status(), e.contentUTF8(), e);
+            throw new ServiceException("Failed to fetch exam details. Please try again later.");
+        }
+    }
+
+    private List<StudentQuestionDTO> getExamQuestionsForStudentOrThrow(UUID examId, boolean shuffle) {
+        try {
+            log.debug("Fetching student questions from question-service for examId: {}", examId);
+            ApiResponse<List<StudentQuestionDTO>> response = studentQuestionServiceClient.getExamQuestionsForStudent(examId, shuffle);
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                log.warn("No student questions found or invalid response for examId: {}", examId);
+                return Collections.emptyList();
+            }
+            return response.getData();
+        } catch (FeignException e) {
+            log.error("Feign error fetching student questions for examId: {}. Status: {}, Body: {}", examId, e.status(), e.contentUTF8(), e);
+            throw new ServiceException("Failed to fetch exam questions. Please try again later.");
+        }
+    }
+
+    private void validateExamForAttempt(ExamDTO exam) {
+        if (!exam.getStatus().isAvailableForAttempt()) {
+            throw new BadRequestException("Exam is not available for attempt. Current status: " + exam.getStatus());
+        }
+        if (!Boolean.TRUE.equals(exam.getIsActive())) {
+            throw new BadRequestException("Exam is not active");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (exam.getStartTime() != null && now.isBefore(exam.getStartTime())) {
+            throw new BadRequestException("Exam has not started yet. Starts at: " + exam.getStartTime());
+        }
+        if (exam.getEndTime() != null && now.isAfter(exam.getEndTime())) {
+            throw new BadRequestException("Exam has ended. Ended at: " + exam.getEndTime());
+        }
+    }
+
+    private void verifyAttemptOwnership(ExamAttempt attempt, UUID studentId) {
+        if (!attempt.getStudentId().equals(studentId)) {
+            log.warn("Ownership verification failed. Attempt {} belongs to student {}, but was accessed by student {}", attempt.getId(), attempt.getStudentId(), studentId);
+            throw new UnauthorizedException("Not authorized to access this attempt");
+        }
+    }
+
+    private void verifyTeacherOrAdminRole(Authentication authentication) {
+        String role = JwtUtils.getRole(authentication);
+        if (!ROLE_ADMIN.equals(role) && !ROLE_TEACHER.equals(role)) {
+            throw new UnauthorizedException("Only teachers and admins can access this resource");
+        }
+    }
+
+    private void updateAnswerFields(AttemptAnswer answer, SaveAnswerRequest request) {
+        if (request.getSelectedOptions() != null) {
+            answer.setSelectedOptions(request.getSelectedOptions());
+        }
+        if (request.getAnswerText() != null) {
+            answer.setAnswerText(request.getAnswerText());
+        }
+        if (request.getFlagged() != null) {
+            answer.setFlagged(request.getFlagged());
+        }
+        if (request.getTimeSpentSeconds() != null) {
+            answer.setTimeSpentSeconds(request.getTimeSpentSeconds());
+        }
+    }
+
+    private Map<UUID, QuestionDTO> fetchQuestionsForGrading(UUID attemptId, List<UUID> questionIds) {
+        try {
+            log.debug("Attempting to fetch {} questions via InternalQuestionServiceClient for attemptId: {}", questionIds.size(), attemptId);
+            ApiResponse<List<QuestionDTO>> response = internalQuestionServiceClient.getQuestionsByIds(questionIds);
+            if (response != null && response.isSuccess() && response.getData() != null) {
+                log.info("Successfully fetched {} questions for grading attemptId: {}", response.getData().size(), attemptId);
+                return response.getData().stream().collect(Collectors.toMap(QuestionDTO::getId, q -> q));
+            } else {
+                log.error("Failed to fetch questions for grading. Service response was unsuccessful or data was null. Response: {}", response);
+                return Collections.emptyMap();
+            }
+        } catch (FeignException e) {
+            log.error("Feign client error while fetching questions for grading attemptId: {}. Status: {}, Body: {}", attemptId, e.status(), e.contentUTF8(), e);
+            return Collections.emptyMap();
+        } catch (Exception e) {
+            log.error("Unexpected error while fetching questions for grading attemptId: {}", attemptId, e);
+            return Collections.emptyMap();
+        }
+    }
+
+    private boolean isTextAnswerCorrect(String studentAnswer, String correctAnswer) {
+        return studentAnswer != null && correctAnswer != null &&
+               studentAnswer.trim().equalsIgnoreCase(correctAnswer.trim());
+    }
+
+    private boolean isMultipleAnswerCorrect(AttemptAnswer answer, QuestionDTO question) {
+        if (question.getCorrectAnswer() == null || question.getCorrectAnswer().isBlank()) {
+            return false;
+        }
+        Set<String> correctOptions = Arrays.stream(question.getCorrectAnswer().split(","))
+                .map(String::trim)
+                .collect(Collectors.toSet());
+        Set<String> studentSelectedOptions = answer.getSelectedOptions() != null ?
+                answer.getSelectedOptions().stream().map(String::trim).collect(Collectors.toSet()) :
+                Collections.emptySet();
+        return correctOptions.equals(studentSelectedOptions);
+    }
+
+    public void recordCustomViolation(UUID attemptId, String violationType, Authentication authentication) {
+    }
+}

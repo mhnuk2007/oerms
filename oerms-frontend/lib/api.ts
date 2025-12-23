@@ -57,31 +57,71 @@ class APIClient {
       };
     }
 
-    // Try to parse as JSON
+    // Try to parse as JSON, but handle empty responses gracefully
     let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (jsonError: any) {
-      const parseError = {
-        message: `Failed to parse response as JSON. Response: ${responseText.substring(0, 300)}...`,
-        status: response.status,
-        details: { textResponse: responseText, jsonError: jsonError?.message || jsonError },
-        url: response.url,
-        endpoint,
-        method: options.method || 'GET',
-      };
-      // Log both object and stringified for visibility
-      console.error('🚨 API Parse Error:', parseError, 'raw:', responseText.substring(0, 300));
-      console.error('🚨 API Parse Error (json):', JSON.stringify(parseError, null, 2));
-      throw parseError;
+    if (responseText.trim() === '') {
+      // Empty response body - this is valid for some responses (like 204 No Content)
+      data = null;
+    } else {
+      try {
+        data = JSON.parse(responseText);
+      } catch (jsonError: any) {
+        // For error responses (4xx, 5xx), the body might not be JSON
+        // Create a synthetic error object
+        if (!response.ok) {
+          data = {
+            message: responseText || `HTTP ${response.status}: ${response.statusText}`,
+            status: response.status,
+            error: 'Response parsing failed'
+          };
+        } else {
+          // For successful responses, JSON parsing should work
+          const parseError = {
+            message: `Failed to parse response as JSON. Response: ${responseText.substring(0, 300)}...`,
+            status: response.status,
+            details: { textResponse: responseText, jsonError: jsonError?.message || jsonError },
+            url: response.url,
+            endpoint,
+            method: options.method || 'GET',
+          };
+          console.error('🚨 API Parse Error:', parseError, 'raw:', responseText.substring(0, 300));
+          console.error('🚨 API Parse Error (json):', JSON.stringify(parseError, null, 2));
+          throw parseError;
+        }
+      }
     }
 
-    // Check if the response indicates an error (even with 200 status)
+    // Check if the response indicates an error
     if (!response.ok) {
       const errorMessage = data?.message || data?.error_description || data?.error ||
                           `HTTP ${response.status}: ${response.statusText}`;
 
-      // Create detailed error object
+      // Handle 401 Unauthorized - token expired
+      if (response.status === 401) {
+        console.warn('🚨 Token expired, redirecting to login...');
+
+        // Clear stored tokens and redirect asynchronously
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+
+          // Use setTimeout to allow the current execution to complete
+          setTimeout(() => {
+            window.location.href = '/login?session_expired=true';
+          }, 100);
+        }
+
+        // Throw an error to indicate authentication failure
+        throw {
+          message: 'Session expired. Redirecting to login...',
+          status: 401,
+          code: 'SESSION_EXPIRED',
+          redirecting: true
+        };
+      }
+
+      // Create detailed error object for other errors
       const errorDetails = {
         message: errorMessage,
         status: response.status,
@@ -95,7 +135,6 @@ class APIClient {
       };
 
       // Log detailed error information
-      // Log both object and stringified for visibility
       console.error('🚨 API Error Details:', errorDetails, 'raw:', responseText.substring(0, 300));
       console.error('🚨 API Error Details (json):', JSON.stringify(errorDetails, null, 2));
 
@@ -154,16 +193,6 @@ class APIClient {
 
   async getActiveExams(): Promise<any> {
     return this.request('/api/exams/active');
-  }
-
-  async getAllExams(params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
-    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
-    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
-    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
-
-    return this.request(`/api/admin/exams?${queryParams.toString()}`);
   }
 
   async getAllUsers(params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
@@ -596,6 +625,10 @@ class APIClient {
     return this.request(`/api/results/${id}`);
   }
 
+  async getResultDetails(id: string): Promise<any> {
+    return this.request(`/api/results/${id}/details`);
+  }
+
   async deleteResult(id: string): Promise<any> {
     return this.request(`/api/results/${id}`, { method: 'DELETE' });
   }
@@ -669,14 +702,6 @@ class APIClient {
     return this.request(`/api/results/exam/${examId}/pending-grading`);
   }
 
-  async getSuspiciousResultsByExam(examId: string): Promise<any> {
-    return this.request(`/api/results/exam/${examId}/suspicious`);
-  }
-
-  async getStudentStatistics(studentId: string): Promise<any> {
-    return this.request(`/api/results/student/${studentId}/statistics`);
-  }
-
   // ==================== Teacher/Admin Operations ====================
 
   async publishResultAdmin(resultId: string, request: PublishResultRequest): Promise<any> {
@@ -726,16 +751,6 @@ class APIClient {
 
   async resultServiceHealth(): Promise<any> {
     return this.request('/api/results/health');
-  }
-
-  async getAllResults(params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
-    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
-    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
-    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
-
-    return this.request(`/api/admin/results?${queryParams.toString()}`);
   }
 }
 

@@ -93,47 +93,96 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/20 to-purple-50/20">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-2xl shadow-xl border border-slate-200">
-        <h1 className="sr-only">Login to OERMS</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/20 to-purple-50/20 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        {/* Header */}
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-slate-900">Welcome to OERMS</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Online Examination and Result Management System
+          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <span className="text-blue-600 font-bold text-lg">O</span>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome back</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Sign in to your OERMS account
           </p>
         </div>
 
-        {error && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Authentication Error:</span>
+        {/* Login Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-8">
+          {error && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm mb-6"
+            >
+              <div className="flex items-start gap-2">
+                <div className="w-4 h-4 bg-red-500 rounded-full flex-shrink-0 mt-0.5"></div>
+                <div>
+                  <p className="font-medium">Authentication Error</p>
+                  <p className="mt-1">{error}</p>
+                </div>
+              </div>
             </div>
-            <p className="mt-1">{error}</p>
+          )}
+
+          <div className="space-y-6">
+            <Button
+              onClick={handleLogin}
+              isLoading={isLoading}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 text-white font-semibold py-3 h-auto"
+              size="lg"
+              aria-label={isLoading ? 'Signing in, redirecting' : 'Sign in with OERMS'}
+              aria-disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Redirecting...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                  </svg>
+                  Sign In with OERMS
+                </div>
+              )}
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white dark:bg-gray-800 text-gray-500">Secure authentication</span>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Don't have an account?{' '}
+                <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+                  Create one
+                </Link>
+              </p>
+            </div>
           </div>
-        )}
+        </div>
 
-        <Button
-          onClick={handleLogin}
-          isLoading={isLoading}
-          className="w-full"
-          size="lg"
-          aria-label={isLoading ? 'Signing in, redirecting' : 'Sign in with OERMS'}
-          aria-disabled={isLoading}
-        >
-          {isLoading ? 'Redirecting...' : 'Sign In with OERMS'}
-        </Button>
-
-        <div className="text-center">
-          <p className="text-sm text-slate-600">
-            Don't have an account?{' '}
-            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700 transition-colors">
-              Sign up
-            </Link>
-          </p>
+        {/* Footer */}
+        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+          <p>Protected by enterprise-grade security</p>
+          <div className="flex items-center justify-center gap-4 mt-2">
+            <span className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              SSL Encrypted
+            </span>
+            <span className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              OAuth 2.0
+            </span>
+          </div>
         </div>
       </div>
     </div>

@@ -257,6 +257,40 @@
         }
       }
     },
+    "/api/results/{id}/details": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get result details",
+        "description": "Retrieves detailed result including questions and answers",
+        "operationId": "getResultDetails",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Result ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseResultDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/results/suspicious": {
       "get": {
         "tags": [
@@ -712,6 +746,40 @@
           }
         }
       }
+    },
+    "/api/results/attempt/{attemptId}": {
+      "get": {
+        "tags": [
+          "Result Management"
+        ],
+        "summary": "Get result by Attempt ID",
+        "description": "Retrieves a single result by attempt ID",
+        "operationId": "getResultByAttemptId",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "description": "Attempt ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseResultDTO"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -938,6 +1006,144 @@
           }
         }
       },
+      "ApiResponseResultDetailsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ResultDetailsResponse"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ResultDetailsResponse": {
+        "type": "object",
+        "properties": {
+          "resultId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examTitle": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "obtainedMarks": {
+            "type": "number",
+            "format": "double"
+          },
+          "percentage": {
+            "type": "number",
+            "format": "double"
+          },
+          "grade": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_GRADING",
+              "GRADED",
+              "PUBLISHED",
+              "WITHHELD"
+            ]
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeTakenSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultQuestionDetailDTO"
+            }
+          }
+        }
+      },
+      "ResultQuestionDetailDTO": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionText": {
+            "type": "string"
+          },
+          "questionType": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "correctAnswer": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "studentSelectedOptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "studentAnswerText": {
+            "type": "string"
+          },
+          "isCorrect": {
+            "type": "boolean"
+          },
+          "marksAllocated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "marksObtained": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "ApiResponseListResultSummaryDTO": {
         "type": "object",
         "properties": {
@@ -1082,13 +1288,13 @@
       "PageResultSummaryDTO": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -1107,18 +1313,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -1135,14 +1341,14 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
           "paged": {
             "type": "boolean"
           },
           "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageNumber": {
             "type": "integer",
             "format": "int32"
           },

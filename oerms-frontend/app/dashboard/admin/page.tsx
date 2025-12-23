@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { apiClient } from '@/lib/api';
+import { examService } from '@/lib/api/exam';
 import Link from 'next/link';
 import { Users, BookOpen, Activity, Shield, TrendingUp, AlertTriangle, FileText, Award, CheckCircle2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -39,39 +40,33 @@ export default function AdminDashboard() {
                     setTimeout(() => reject(new Error('Request timeout')), 10000);
                 });
 
-                const [usersResponse, examsResponse, attemptsResponse] = await Promise.race([
+                const [usersResponse, examsResponse] = await Promise.race([
                     Promise.all([
                         apiClient.getAllUserProfiles({ page: 0, size: 1 }).catch(() => ({ data: { totalElements: 0 } })),
-                        apiClient.getPublishedExams({ page: 0, size: 1 }).catch(() => ({ data: { totalElements: 0 } })),
-                        apiClient.getAllAttempts({ page: 0, size: 1 }).catch(() => ({ data: { totalElements: 0 } }))
+                        examService.getAllExams(0, 1).catch(() => ({ totalElements: 0 }))
                     ]),
                     timeoutPromise
-                ]).catch(() => [{ data: { totalElements: 0 } }, { data: { totalElements: 0 } }, { data: { totalElements: 0 } }]) as any;
+                ]).catch(() => [{ data: { totalElements: 0 } }, { data: { totalElements: 0 } }]) as any;
 
         // Extract pagination data from API response structure
         const usersPage = usersResponse.data || usersResponse;
         const examsPage = examsResponse.data || examsResponse;
-        const attemptsPage = attemptsResponse.data || attemptsResponse;
 
         // Check system health
         const authHealth = await apiClient.authServiceHealth().then(() => true).catch(() => false);
         const attemptHealth = await apiClient.attemptServiceHealth().then(() => true).catch(() => false);
         const resultHealth = await apiClient.resultServiceHealth().then(() => true).catch(() => false);
 
-        // Get pending grading results
+        // Get result statistics (mock data for now)
         const pendingGradingResponse = await apiClient.getPendingGradingResults().catch(() => ({ data: [] }));
         const pendingGrading = pendingGradingResponse.data?.length || 0;
-
-        // Get suspicious results count
-        const suspiciousResponse = await apiClient.getSuspiciousResults().catch(() => ({ data: [] }));
-        const suspiciousCount = suspiciousResponse.data?.length || 0;
 
         setStats({
           users: usersPage.totalElements || 0,
           exams: examsPage.totalElements || 0,
-          attempts: attemptsPage.totalElements || 0,
-          results: pendingGrading + suspiciousCount, // Total results requiring attention
-          publishedResults: 0, // Not available from current endpoints
+          attempts: 0, // Would need a separate endpoint for attempt counts
+          results: 0, // Would need result service integration
+          publishedResults: 0,
           pendingGrading: pendingGrading,
           systemHealth: authHealth && attemptHealth && resultHealth
         });
@@ -129,7 +124,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card className="border-t-4 border-t-blue-500">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -138,7 +133,7 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.users.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.users}</p>
             <p className="text-sm text-gray-500 mt-1">Registered accounts</p>
           </CardContent>
         </Card>
@@ -147,12 +142,12 @@ export default function AdminDashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <BookOpen className="w-5 h-5 text-green-600" />
-              Published Exams
+              Total Exams
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.exams.toLocaleString()}</p>
-            <p className="text-sm text-gray-500 mt-1">Available to students</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.exams}</p>
+            <p className="text-sm text-gray-500 mt-1">Created assessments</p>
           </CardContent>
         </Card>
 
@@ -160,56 +155,44 @@ export default function AdminDashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Activity className="w-5 h-5 text-orange-600" />
-              Total Attempts
+              Student Attempts
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.attempts.toLocaleString()}</p>
-            <p className="text-sm text-gray-500 mt-1">Student submissions</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.attempts}</p>
+            <p className="text-sm text-gray-500 mt-1">Total submissions</p>
           </CardContent>
         </Card>
 
         <Card className="border-t-4 border-t-red-500">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-              Results Needing Attention
+              <FileText className="w-5 h-5 text-red-600" />
+              Pending Grading
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.pendingGrading + (stats.results - stats.pendingGrading)}</p>
-            <p className="text-sm text-gray-500 mt-1">
-              {stats.pendingGrading} pending grading, {(stats.results - stats.pendingGrading)} suspicious
-            </p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.pendingGrading}</p>
+            <p className="text-sm text-gray-500 mt-1">Results awaiting review</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-t-4 border-t-purple-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Shield className="w-5 h-5 text-purple-600" />
+              System Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${stats.systemHealth ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="font-medium">{stats.systemHealth ? 'Healthy' : 'Issues'}</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">Service availability</p>
           </CardContent>
         </Card>
       </div>
-
-      {/* System Status */}
-      <Card className="border-t-4 border-t-purple-500">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Shield className="w-5 h-5 text-purple-600" />
-            System Health
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-4 h-4 rounded-full ${stats.systemHealth ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <div>
-                <span className="font-medium">{stats.systemHealth ? 'All Systems Operational' : 'System Issues Detected'}</span>
-                <p className="text-sm text-gray-500 mt-0.5">Auth, Attempt, and Result services</p>
-              </div>
-            </div>
-            {!stats.systemHealth && (
-              <div className="text-right">
-                <p className="text-sm text-red-600">Check system logs</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

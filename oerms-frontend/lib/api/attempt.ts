@@ -5,35 +5,65 @@ import type {
   SubmitAttemptRequest,
   AttemptAnswerResponse,
   AttemptSummary,
-  ExamAttemptStatistics,
   StartAttemptRequest,
   PageResponse
 } from '@/lib/types';
 
 export const attemptService = {
-
   // =====================
-  // Student
+  // Proctoring
   // =====================
 
-  startAttempt(request: StartAttemptRequest) {
-    return apiClient.post<AttemptResponse>(
-      '/api/attempts/start',
-      request
+  recordWebcamViolation(attemptId: string) {
+    return apiClient.post<void>(
+      `/api/attempts/${attemptId}/webcam-violation`
     );
   },
 
-  saveAnswer(attemptId: string, request: SaveAnswerRequest) {
+  recordCustomViolation(attemptId: string, violationType: string) {
+    return apiClient.post<void>(
+      `/api/attempts/${attemptId}/violations/custom?violationType=${encodeURIComponent(violationType)}`
+    );
+  },
+
+  recordTabSwitch(attemptId: string) {
+    return apiClient.post<void>(
+      `/api/attempts/${attemptId}/tab-switch`
+    );
+  },
+
+  // =====================
+  // Answers
+  // =====================
+
+  getAttemptAnswers(attemptId: string) {
+    return apiClient.get<AttemptAnswerResponse[]>(
+      `/api/attempts/${attemptId}/answers`
+    );
+  },
+
+  saveAnswer(attemptId: string, data: SaveAnswerRequest) {
     return apiClient.post<AttemptAnswerResponse>(
       `/api/attempts/${attemptId}/answers`,
-      request
+      data
     );
   },
 
-  submitAttempt(request: SubmitAttemptRequest) {
+  // =====================
+  // Attempts
+  // =====================
+
+  submitAttempt(data: SubmitAttemptRequest) {
     return apiClient.post<AttemptResponse>(
       '/api/attempts/submit',
-      request
+      data
+    );
+  },
+
+  startAttempt(data: StartAttemptRequest) {
+    return apiClient.post<AttemptResponse>(
+      '/api/attempts/start',
+      data
     );
   },
 
@@ -43,9 +73,13 @@ export const attemptService = {
     );
   },
 
-  getAttemptAnswers(attemptId: string) {
-    return apiClient.get<AttemptAnswerResponse[]>(
-      `/api/attempts/${attemptId}/answers`
+  // =====================
+  // Student Attempts
+  // =====================
+
+  getStudentAttempts(studentId: string, page = 0, size = 20) {
+    return apiClient.get<PageResponse<AttemptSummary>>(
+      `/api/attempts/student/${studentId}?page=${page}&size=${size}`
     );
   },
 
@@ -68,40 +102,12 @@ export const attemptService = {
   },
 
   // =====================
-  // Proctoring
-  // =====================
-
-  recordTabSwitch(attemptId: string) {
-    return apiClient.post<void>(
-      `/api/attempts/${attemptId}/tab-switch`
-    );
-  },
-
-  recordWebcamViolation(attemptId: string) {
-    return apiClient.post<void>(
-      `/api/attempts/${attemptId}/webcam-violation`
-    );
-  },
-
-  recordCustomViolation(attemptId: string, violationType: string) {
-    return apiClient.post<void>(
-      `/api/attempts/${attemptId}/violations/custom?violationType=${encodeURIComponent(violationType)}`
-    );
-  },
-
-  // =====================
-  // Teacher / Admin
+  // Teacher/Admin Attempts
   // =====================
 
   getExamAttempts(examId: string, page = 0, size = 20) {
     return apiClient.get<PageResponse<AttemptSummary>>(
       `/api/attempts/exam/${examId}?page=${page}&size=${size}`
-    );
-  },
-
-  getExamAttemptStatistics(examId: string) {
-    return apiClient.get<ExamAttemptStatistics>(
-      `/api/attempts/exam/${examId}/statistics`
     );
   },
 
@@ -111,17 +117,15 @@ export const attemptService = {
     );
   },
 
-  getStudentAttempts(studentId: string, page = 0, size = 20) {
-    return apiClient.get<PageResponse<AttemptSummary>>(
-      `/api/attempts/student/${studentId}?page=${page}&size=${size}`
-    );
-  },
-
   getAllAttempts(page = 0, size = 20) {
     return apiClient.get<PageResponse<AttemptSummary>>(
       `/api/attempts/all?page=${page}&size=${size}`
     );
   },
+
+  // =====================
+  // Health
+  // =====================
 
   health() {
     return apiClient.get<string>(

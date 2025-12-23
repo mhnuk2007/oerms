@@ -1,16 +1,18 @@
 // lib/api/client.ts - Base API client with Bearer token authentication
 
+import { ApiError } from './errors';
+
 // Use relative URLs to go through Next.js proxy
 const BASE_URL = '';
 const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
 
 // Import auth functions
-const getAccessToken = async (): Promise<string | null> => {
+const getAuth = async () => {
   if (typeof window === 'undefined') return null;
   try {
     // Import dynamically to avoid circular dependency
-    const { getAccessToken: getToken } = await import('../auth');
-    return await getToken();
+    const auth = await import('../auth');
+    return auth;
   } catch {
     return null;
   }
@@ -24,12 +26,6 @@ export interface ApiResponse<T> {
   path: string;
 }
 
-export interface ApiError {
-  message: string;
-  status: number;
-  details?: any;
-}
-
 class APIClient {
   private baseUrl: string;
 
@@ -37,115 +33,78 @@ class APIClient {
     this.baseUrl = baseUrl;
   }
 
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      // Handle 401 (Unauthorized) - don't try to refresh since no refresh endpoint exists
-      if (response.status === 401) {
-        // Redirect to login on authentication failure
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
-        throw new Error('Authentication required');
-      }
+  private async request<T>(path: string, options: RequestInit, isRetry = false): Promise<T> {
+    const auth = await getAuth();
+    const token = await auth?.getAccessToken();
 
-      // Handle other errors
-      const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
-      const error: ApiError = {
-        message: errorData.message || `Request failed with status ${response.status}`,
-        status: response.status,
-        details: errorData
-      };
-      throw error;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Origin': FRONTEND_URL,
+      ...(options?.headers as Record<string, string> || {})
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const result: ApiResponse<T> = await response.json();
-    return result.data;
+    try {
+      const response = await fetch(`${this.baseUrl}${path}`, { ...options, headers });
+
+      if (response.status === 401 && !isRetry) {
+        // Token might be expired, get a fresh one and retry
+        const freshToken = await auth?.getAccessToken();
+        if (freshToken && freshToken !== token) {
+          // We got a fresh token, retry the request
+          return this.request<T>(path, options, true);
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw ApiError.fromResponse(response, errorData);
+      }
+
+      const result: ApiResponse<T> = await response.json();
+      return result.data;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      if (error instanceof TypeError || error instanceof Error) {
+        throw ApiError.fromNetworkError(error);
+      }
+      throw new ApiError('An unexpected error occurred', 0);
+    }
   }
 
   async get<T>(path: string, options?: RequestInit): Promise<T> {
-    const token = await getAccessToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Origin': FRONTEND_URL,
-      ...(options?.headers as Record<string, string> || {})
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    return this.request<T>(path, {
       ...options,
       method: 'GET',
-      headers
     });
-
-    return this.handleResponse<T>(response);
   }
 
   async post<T>(path: string, data?: any, options?: RequestInit): Promise<T> {
-    const token = await getAccessToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Origin': FRONTEND_URL,
-      ...(options?.headers as Record<string, string> || {})
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    return this.request<T>(path, {
       ...options,
       method: 'POST',
-      headers,
       body: data ? JSON.stringify(data) : undefined
     });
-
-    return this.handleResponse<T>(response);
   }
 
   async put<T>(path: string, data?: any, options?: RequestInit): Promise<T> {
-    const token = await getAccessToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Origin': FRONTEND_URL,
-      ...(options?.headers as Record<string, string> || {})
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    return this.request<T>(path, {
       ...options,
       method: 'PUT',
-      headers,
       body: data ? JSON.stringify(data) : undefined
     });
-
-    return this.handleResponse<T>(response);
   }
 
   async delete<T>(path: string, options?: RequestInit): Promise<T> {
-    const token = await getAccessToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Origin': FRONTEND_URL,
-      ...(options?.headers as Record<string, string> || {})
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    return this.request<T>(path, {
       ...options,
       method: 'DELETE',
-      headers
     });
-
-    return this.handleResponse<T>(response);
   }
 }
 

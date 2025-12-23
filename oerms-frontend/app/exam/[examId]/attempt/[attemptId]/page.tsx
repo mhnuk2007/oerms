@@ -361,14 +361,14 @@ export default function ExamPage() {
             <aside className="w-full md:w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col z-20">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 className="font-bold text-lg truncate" title={examTitle}>{examTitle}</h2>
-                    <div className="mt-2 flex items-center justify-between text-sm text-gray-700">
+                    <div className="mt-2 flex items-center justify-between text-sm text-gray-500">
                         <span>{questions.length} Questions</span>
                         <span>{Object.keys(answers).length} Answered</span>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4">
-                    <div id="palette-legend" className="mb-3 text-xs text-gray-700">
+                    <div id="palette-legend" className="mb-3 text-xs text-gray-500">
                         <span className="mr-3"><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1 align-middle" aria-hidden="true"></span>Current</span>
                         <span className="mr-3"><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1 align-middle" aria-hidden="true"></span>Answered</span>
                         <span className="mr-3"><span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-1 align-middle" aria-hidden="true"></span>Not answered</span>
@@ -427,7 +427,7 @@ export default function ExamPage() {
                                         isCurrent ? "ring-2 ring-blue-500 z-10" : "",
                                         isFlagged ? "bg-amber-100 text-amber-700 border border-amber-300" :
                                             isAnswered ? "bg-blue-100 text-blue-700 border border-blue-200" :
-                                                "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
+                                                "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200"
                                     )}
                                 >
                                     <span className="sr-only">Go to question {idx + 1}</span>
@@ -441,8 +441,8 @@ export default function ExamPage() {
 
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                     <div className="flex items-center gap-2 mb-4 justify-center">
-                            <div className="bg-white dark:bg-gray-800 px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 flex items-center gap-2 shadow-sm">
-                            <Clock className={cn("w-4 h-4", timeLeft && timeLeft < 300 ? "text-red-500 animate-pulse" : "text-gray-700")} />
+                        <div className="bg-white dark:bg-gray-800 px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 flex items-center gap-2 shadow-sm">
+                            <Clock className={cn("w-4 h-4", timeLeft && timeLeft < 300 ? "text-red-500 animate-pulse" : "text-gray-500")} />
                             <span className={cn("font-mono font-bold text-lg", timeLeft && timeLeft < 300 ? "text-red-600" : "text-gray-900 dark:text-gray-100")}>
                                 {timeLeft !== null ? formatTime(timeLeft) : '--:--'}
                             </span>
@@ -463,14 +463,14 @@ export default function ExamPage() {
                     <div className="max-w-3xl mx-auto space-y-8">
                         {/* Toolbar */}
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-700">Question {currentIndices + 1} of {questions.length}</span>
+                            <span className="text-sm font-medium text-gray-500">Question {currentIndices + 1} of {questions.length}</span>
                             <div className="flex items-center gap-2">
                                 <span className="text-xs text-gray-400 capitalize bg-white px-2 py-1 rounded border">{saving ? 'Saving...' : 'Saved'}</span>
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={toggleFlag}
-                                    className={cn(currentAns?.flagged ? "text-amber-600 bg-amber-50" : "text-gray-700")}
+                                    className={cn(currentAns?.flagged ? "text-amber-600 bg-amber-50" : "text-gray-500")}
                                 >
                                     <Flag className={cn("w-4 h-4 mr-2", currentAns?.flagged && "fill-current")} />
                                     {currentAns?.flagged ? 'Flagged' : 'Flag for Review'}

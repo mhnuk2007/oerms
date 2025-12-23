@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { apiClient } from '@/lib/api';
+import { examService } from '@/lib/api/exam';
 import { ExamDTO } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
@@ -35,23 +35,19 @@ export default function AdminExamsPage() {
 
                 try {
                     // First try: get all exams (admin endpoint)
-                    const response = await apiClient.getAllExams({ page, size: 10 });
+                    const response = await examService.getAllExams(page, 10);
 
-                    // Handle API response structure: { success, data: { content, ... }, timestamp }
-                    const paginationData = response.data || response;
-                    examsData = paginationData.content || [];
-                    totalPages = paginationData.totalPages || 1;
+                    examsData = response.content || [];
+                    totalPages = response.totalPages || 1;
                 } catch (adminError) {
                     console.warn('getAllExams failed, trying alternative approaches:', adminError);
 
                     // Fallback 1: Try to get published exams (might include all exams for admins)
                     try {
-                        const publishedResponse = await apiClient.getPublishedExams({ page, size: 10 });
+                        const publishedResponse = await examService.getPublishedExams(page, 10);
 
-                        // Handle API response structure: { success, data: { content, ... }, timestamp }
-                        const publishedPaginationData = publishedResponse.data || publishedResponse;
-                        examsData = publishedPaginationData.content || [];
-                        totalPages = publishedPaginationData.totalPages || 1;
+                        examsData = publishedResponse.content || [];
+                        totalPages = publishedResponse.totalPages || 1;
                     } catch (publishedError) {
                         console.warn('getPublishedExams also failed:', publishedError);
                         // Don't throw error - let the page render with empty data and error message
@@ -240,7 +236,7 @@ export default function AdminExamsPage() {
                                             className="border-red-300 text-red-700 hover:bg-red-50"
                                             onClick={async () => {
                                                 try {
-                                                    await apiClient.deleteExam(exam.id);
+                                                    await examService.deleteExam(exam.id);
                                                     setExams(prev => prev.filter(e => e.id !== exam.id));
                                                 } catch (err) {
                                                     console.error('Failed to delete exam:', err);

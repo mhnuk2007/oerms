@@ -1,0 +1,2735 @@
+
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\api\exam.ts %%%%
+// lib/api/exam.ts - Exam management service
+
+import { apiClient } from './client';
+import type { ExamDTO, CreateExamRequest, UpdateExamRequest, ExamStatisticsDTO, PageResponseExamDTO, ExamStartResponse } from '@/lib/types';
+
+export const examService = {
+  /**
+   * Create new exam (Teacher/Admin)
+   */
+  async createExam(data: CreateExamRequest): Promise<ExamDTO> {
+    return apiClient.post<ExamDTO>('/api/exams', data);
+  },
+
+  /**
+   * Update exam (DRAFT only)
+   */
+  async updateExam(id: string, data: UpdateExamRequest): Promise<ExamDTO> {
+    return apiClient.put<ExamDTO>(`/api/exams/${id}`, data);
+  },
+
+  /**
+   * Get exam by ID
+   */
+  async getExam(id: string): Promise<ExamDTO> {
+    return apiClient.get<ExamDTO>(`/api/exams/${id}`);
+  },
+
+  /**
+   * Delete exam (DRAFT only)
+   */
+  async deleteExam(id: string): Promise<void> {
+    await apiClient.delete(`/api/exams/${id}`);
+  },
+
+  /**
+   * Publish exam (Teacher/Admin)
+   */
+  async publishExam(id: string): Promise<ExamDTO> {
+    return apiClient.post<ExamDTO>(`/api/exams/${id}/publish`);
+  },
+
+  /**
+   * Unpublish exam
+   */
+  async unpublishExam(id: string): Promise<ExamDTO> {
+    return apiClient.post<ExamDTO>(`/api/exams/${id}/unpublish`);
+  },
+
+  /**
+   * Archive exam
+   */
+  async archiveExam(id: string): Promise<ExamDTO> {
+    return apiClient.post<ExamDTO>(`/api/exams/${id}/archive`);
+  },
+
+  /**
+   * Cancel exam
+   */
+  async cancelExam(id: string, reason?: string): Promise<ExamDTO> {
+    const params = reason ? `?reason=${encodeURIComponent(reason)}` : '';
+    return apiClient.post<ExamDTO>(`/api/exams/${id}/cancel${params}`);
+  },
+
+  /**
+   * Validate exam for publishing
+   */
+  async validatePublish(id: string): Promise<boolean> {
+    return apiClient.get<boolean>(`/api/exams/${id}/validate-publish`);
+  },
+
+  /**
+   * Get exam statistics
+   */
+  async getStatistics(id: string): Promise<ExamStatisticsDTO> {
+    return apiClient.get<ExamStatisticsDTO>(`/api/exams/${id}/statistics`);
+  },
+
+  /**
+   * Get my exams (current teacher)
+   */
+  async getMyExams(page = 0, size = 10, sortBy = 'createdAt', sortDir = 'DESC'): Promise<PageResponseExamDTO> {
+    return apiClient.get<PageResponseExamDTO>(
+      `/api/exams/my-exams?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
+    );
+  },
+
+  /**
+   * Get published exams (for students)
+   */
+  async getPublishedExams(page = 0, size = 10): Promise<PageResponseExamDTO> {
+    return apiClient.get<PageResponseExamDTO>(
+      `/api/exams/published?page=${page}&size=${size}`
+    );
+  },
+
+  /**
+   * Get all exams (admin only)
+   */
+  async getAllExams(page = 0, size = 10, sortBy = 'createdAt', sortDir = 'DESC'): Promise<PageResponseExamDTO> {
+    return apiClient.get<PageResponseExamDTO>(
+      `/api/exams/all?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
+    );
+  },
+
+  /**
+   * Get active exams
+   */
+  async getActiveExams(): Promise<ExamDTO[]> {
+    return apiClient.get<ExamDTO[]>('/api/exams/active');
+  },
+
+  /**
+   * Get ongoing exams
+   */
+  async getOngoingExams(): Promise<ExamDTO[]> {
+    return apiClient.get<ExamDTO[]>('/api/exams/ongoing');
+  },
+
+  /**
+   * Start exam (student)
+   * Returns exam and attempt information
+   */
+  async startExam(id: string): Promise<ExamStartResponse> {
+    return apiClient.post<ExamStartResponse>(`/api/exams/${id}/start`);
+  },
+
+  /**
+   * Complete exam (student)
+   */
+  async completeExam(id: string): Promise<void> {
+    await apiClient.post(`/api/exams/${id}/complete`);
+  },
+
+  /**
+   * Get question count for exam
+   */
+  async getQuestionCount(id: string): Promise<number> {
+    return apiClient.get<number>(`/api/exams/${id}/questions/count`);
+  },
+
+  /**
+   * Get published exam count
+   */
+  async getPublishedExamCount(): Promise<number> {
+    return apiClient.get<number>('/api/exams/published/count');
+  },
+
+  /**
+   * Get my exam count
+   */
+  async getMyExamCount(): Promise<number> {
+    return apiClient.get<number>('/api/exams/my-exams/count');
+  },
+
+  /**
+   * Get exam with questions
+   */
+  async getExamWithQuestions(id: string): Promise<any> {
+    return apiClient.get(`/api/exams/${id}/with-questions`);
+  },
+
+  /**
+   * Get teacher's exams
+   */
+  async getTeacherExams(teacherId: string, page = 0, size = 10, sortBy = 'createdAt', sortDir = 'DESC'): Promise<PageResponseExamDTO> {
+    return apiClient.get<PageResponseExamDTO>(
+      `/api/exams/teacher/${teacherId}?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
+    );
+  },
+
+  /**
+   * Get teacher's exam count
+   */
+  async getTeacherExamCount(teacherId: string): Promise<number> {
+    return apiClient.get<number>(`/api/exams/teacher/${teacherId}/count`);
+  }
+};
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\api\question.ts %%%%
+// lib/api/question.ts - Question management service
+
+import { apiClient } from './client';
+import type {
+  QuestionDTO,
+  CreateQuestionRequest,
+  UpdateQuestionRequest,
+  StudentQuestionDTO,
+  QuestionStatisticsDTO,
+  QuestionSummaryDTO
+} from '@/lib/types';
+
+export const questionService = {
+  /**
+   * Get question by ID
+   */
+  async getQuestion(id: string): Promise<QuestionDTO> {
+    return apiClient.get<QuestionDTO>(`/api/questions/${id}`);
+  },
+
+  /**
+   * Update question
+   */
+  async updateQuestion(id: string, data: UpdateQuestionRequest): Promise<QuestionDTO> {
+    return apiClient.put<QuestionDTO>(`/api/questions/${id}`, data);
+  },
+
+  /**
+   * Delete question
+   */
+  async deleteQuestion(id: string): Promise<void> {
+    await apiClient.delete(`/api/questions/${id}`);
+  },
+
+  /**
+   * Create question
+   */
+  async createQuestion(data: CreateQuestionRequest): Promise<QuestionDTO> {
+    return apiClient.post<QuestionDTO>('/api/questions', data);
+  },
+
+  /**
+   * Bulk create questions
+   */
+  async bulkCreateQuestions(data: { questions: CreateQuestionRequest[] }): Promise<QuestionDTO[]> {
+    return apiClient.post<QuestionDTO[]>('/api/questions/bulk', data);
+  },
+
+  /**
+   * Get all questions for exam (teacher/admin)
+   */
+  async getExamQuestions(examId: string): Promise<QuestionDTO[]> {
+    return apiClient.get<QuestionDTO[]>(`/api/questions/exam/${examId}`);
+  },
+
+  /**
+   * Validate exam questions
+   */
+  async validateExamQuestions(examId: string): Promise<boolean> {
+    return apiClient.get<boolean>(`/api/questions/exam/${examId}/validate`);
+  },
+
+  /**
+   * Get total marks for exam
+   */
+  async getTotalMarks(examId: string): Promise<number> {
+    return apiClient.get<number>(`/api/questions/exam/${examId}/total-marks`);
+  },
+
+  /**
+   * Get exam questions summary
+   */
+  async getExamQuestionsSummary(examId: string): Promise<QuestionSummaryDTO> {
+    return apiClient.get<QuestionSummaryDTO>(`/api/questions/exam/${examId}/summary`);
+  },
+
+  /**
+   * Get questions for student (no answers, shuffled if enabled)
+   */
+  async getExamQuestionsForStudent(
+    examId: string,
+    shuffle = false
+  ): Promise<StudentQuestionDTO[]> {
+    return apiClient.get<StudentQuestionDTO[]>(
+      `/api/questions/exam/${examId}/student?shuffle=${shuffle}`
+    );
+  },
+
+  /**
+   * Get exam question statistics
+   */
+  async getExamStatistics(examId: string): Promise<QuestionStatisticsDTO> {
+    return apiClient.get<QuestionStatisticsDTO>(
+      `/api/questions/exam/${examId}/statistics`
+    );
+  },
+
+  /**
+   * Get question count for exam
+   */
+  async getQuestionCount(examId: string): Promise<number> {
+    return apiClient.get<number>(`/api/questions/exam/${examId}/count`);
+  },
+
+  /**
+   * Reorder questions
+   */
+  async reorderQuestions(examId: string, questionIds: string[]): Promise<QuestionDTO[]> {
+    return apiClient.put<QuestionDTO[]>(
+      `/api/questions/exam/${examId}/reorder`,
+      questionIds
+    );
+  },
+
+  /**
+   * Delete all questions for exam
+   */
+  async deleteAllExamQuestions(examId: string): Promise<void> {
+    await apiClient.delete(`/api/questions/exam/${examId}/all`);
+  }
+};
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\api.ts %%%%
+import { getAccessToken, clearTokens } from './auth';
+import type { PublishResultRequest, GradeResultRequest } from './types';
+
+const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+
+// Updated API client with Bearer token authentication
+class APIClient {
+  private baseURL: string;
+
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}, retries = 3): Promise<T> {
+    // Get access token from localStorage
+    const accessToken = await getAccessToken();
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Origin': FRONTEND_URL,
+      ...(options.headers as Record<string, string>),
+    };
+
+    // Add Bearer token if available
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const url = `${this.baseURL}${endpoint}`;
+    console.log(`API Request: ${options.method || 'GET'} ${url}`);
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    // Retry on 503 Service Unavailable
+    if (response.status === 503 && retries > 0) {
+      console.warn(`Service Unavailable (503). Retrying ${endpoint}... (${retries} attempts left)`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return this.request<T>(endpoint, options, retries - 1);
+    }
+
+    // Get the response text once, then try to parse it
+    let responseText: string;
+    try {
+      responseText = await response.text();
+    } catch (textError) {
+      throw {
+        message: `Failed to read response body: ${response.status} ${response.statusText}`,
+        status: response.status,
+        details: { error: 'Could not read response body' },
+        url: response.url,
+      };
+    }
+
+    // Check if the response is HTML (server error pages)
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      throw {
+        message: `Backend server returned HTML instead of JSON. This usually means that API server is not running or not responding correctly. Expected JSON from ${response.url}, but got HTML page.`,
+        status: response.status,
+        details: { htmlResponse: responseText.substring(0, 200) + '...' },
+        url: response.url,
+      };
+    }
+
+    // Try to parse as JSON
+    let data;
+    if (!responseText || !responseText.trim()) {
+      data = {};
+    } else {
+      try {
+        data = JSON.parse(responseText);
+      } catch (jsonError: any) {
+        const parseError = {
+          message: `Failed to parse response as JSON. Response: ${responseText.substring(0, 300)}...`,
+          status: response.status,
+          details: { textResponse: responseText, jsonError: jsonError?.message || jsonError },
+          url: response.url,
+          endpoint,
+          method: options.method || 'GET',
+        };
+        // Log both object and stringified for visibility
+        console.error('🚨 API Parse Error:', parseError, 'raw:', responseText.substring(0, 300));
+        console.error('🚨 API Parse Error (json):', JSON.stringify(parseError, null, 2));
+        throw parseError;
+      }
+    }
+
+    // Check if the response indicates an error (even with 200 status)
+    if (!response.ok) {
+      // Handle 401 Unauthorized (Token Expired)
+      if (response.status === 401 && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        console.warn('Session expired. Redirecting to login...');
+        window.location.href = '/login?reason=session_expired';
+        // We continue to throw the error to interrupt the current operation
+      }
+
+      const errorMessage = data?.message || data?.error_description || data?.error ||
+                        `HTTP ${response.status}: ${response.statusText}`;
+
+      // Create detailed error object
+      const errorDetails = {
+        message: errorMessage,
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        responseData: data,
+        responseText,
+        timestamp: new Date().toISOString(),
+        endpoint: endpoint,
+        method: options.method || 'GET',
+      };
+
+      // Throw the error with all details
+      throw errorDetails;
+    }
+
+    return data;
+  }
+
+  // ==================== Exam Service Methods ====================
+
+  async completeExam(examId: string): Promise<any> {
+    return this.request(`/api/exams/${examId}/complete`, {
+      method: 'POST',
+    });
+  }
+
+  async cancelExam(examId: string, reason?: string): Promise<any> {
+    const queryParams = reason ? `?reason=${encodeURIComponent(reason)}` : '';
+    return this.request(`/api/exams/${examId}/cancel${queryParams}`, {
+      method: 'POST',
+    });
+  }
+
+  async archiveExam(examId: string): Promise<any> {
+    return this.request(`/api/exams/${examId}/archive`, {
+      method: 'POST',
+    });
+  }
+
+  async validateExamForPublish(examId: string): Promise<any> {
+    return this.request(`/api/exams/${examId}/validate-publish`);
+  }
+
+  async getExamServiceStatistics(examId: string): Promise<any> {
+    return this.request(`/api/exams/${examId}/statistics`);
+  }
+
+  async getTeacherExams(teacherId: string, params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
+
+    return this.request(`/api/exams/teacher/${teacherId}?${queryParams.toString()}`);
+  }
+
+  async getTeacherExamCount(teacherId: string): Promise<any> {
+    return this.request(`/api/exams/teacher/${teacherId}/count`);
+  }
+
+  async getOngoingExams(): Promise<any> {
+    return this.request('/api/exams/ongoing');
+  }
+
+  async getActiveExams(): Promise<any> {
+    return this.request('/api/exams/active');
+  }
+
+  async getAllUsers(params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
+
+    return this.request(`/api/admin/users?${queryParams.toString()}`);
+  }
+
+  // Alternative method to get user profiles for admin dashboard
+  async getAllUserProfiles(params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+
+    return this.request(`/api/profiles/all?${queryParams.toString()}`);
+  }
+
+  async register(userData: any): Promise<any> {
+    return this.request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async authServiceHealth(): Promise<any> {
+    return this.request('/api/auth/health');
+  }
+
+  async getCurrentUser(): Promise<any> {
+    return this.request('/api/auth/me');
+  }
+
+  async logout(): Promise<void> {
+    const accessToken = await getAccessToken();
+    if (accessToken) {
+      await revokeToken(accessToken);
+    }
+    clearTokens();
+  }
+
+  async getUserById(userId: string): Promise<any> {
+    return this.request(`/api/admin/users/${userId}`);
+  }
+
+  async deleteUserById(userId: string): Promise<any> {
+    return this.request(`/api/admin/users/${userId}`, { method: 'DELETE' });
+  }
+
+  async searchUsers(query: string, params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('query', query);
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
+
+    return this.request(`/api/admin/users/search?${queryParams.toString()}`);
+  }
+
+  // ==================== Attempt Service Methods ====================
+
+  async attemptServiceHealth(): Promise<any> {
+    return this.request('/api/attempts/health');
+  }
+
+  async startExam(examId: string): Promise<any> {
+    return this.request(`/api/attempts/exam/${examId}/start`, {
+      method: 'POST',
+    });
+  }
+
+  async deleteExam(id: string): Promise<any> {
+    return this.request(`/api/exams/${id}`, { method: 'DELETE' });
+  }
+
+  async getAttempt(id: string): Promise<any> {
+    return this.request(`/api/attempts/${id}`);
+  }
+
+  async getExamQuestionsForStudent(examId: string): Promise<any> {
+    return this.request(`/api/questions/exam/${examId}/student`);
+  }
+
+  async getAttemptAnswers(attemptId: string): Promise<any> {
+    return this.request(`/api/attempts/${attemptId}/answers`);
+  }
+
+  async getExam(id: string): Promise<any> {
+    return this.request(`/api/exams/${id}`);
+  }
+
+  async getExamWithQuestions(examId: string): Promise<any> {
+    return this.request(`/api/exams/${examId}/with-questions`);
+  }
+
+  async publishExam(examId: string): Promise<any> {
+    return this.request(`/api/exams/${examId}/publish`, { method: 'POST' });
+  }
+
+  async unpublishExam(examId: string): Promise<any> {
+    return this.request(`/api/exams/${examId}/unpublish`, { method: 'POST' });
+  }
+
+  async getPublishedExamCount(): Promise<any> {
+    return this.request('/api/exams/published/count');
+  }
+
+  async getMyAttempts(params?: { size?: number }): Promise<any> {
+    const queryParams = params?.size ? `?size=${params.size}` : '';
+    return this.request(`/api/attempts/my-attempts${queryParams}`);
+  }
+
+  async getAllAttempts(params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    return this.request(`/api/attempts/all?${queryParams.toString()}`);
+  }
+
+  async getMyAttemptsCount(): Promise<any> {
+    return this.request('/api/attempts/my-attempts/count');
+  }
+
+  async getMyExamAttempts(examId: string, params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+
+    return this.request(`/api/attempts/my-attempts/exam/${examId}?${queryParams.toString()}`);
+  }
+
+  async getPublishedExams(params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+
+    return this.request(`/api/exams/published?${queryParams.toString()}`);
+  }
+
+  async getMyExamCount(): Promise<any> {
+    return this.request('/api/exams/my-exams/count');
+  }
+
+  async getMyExams(params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+
+    return this.request(`/api/exams/my-exams?${queryParams.toString()}`);
+  }
+
+  async getExamQuestionCount(examId: string): Promise<any> {
+    return this.request(`/api/exams/${examId}/questions/count`);
+  }
+
+  async getExamAttempts(examId: string, params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
+
+    return this.request(`/api/attempts/exam/${examId}?${queryParams.toString()}`);
+  }
+
+  // Additional methods needed by the application
+  async saveAnswer(attemptId: string, payload: any): Promise<any> {
+    return this.request(`/api/attempts/${attemptId}/answers`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async submitAttempt(payload: { attemptId: string; notes?: string }): Promise<any> {
+    return this.request('/api/attempts/submit', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Proctoring violation methods
+  async recordWebcamViolation(attemptId: string): Promise<any> {
+    return this.request(`/api/attempts/${attemptId}/webcam-violation`, { method: 'POST' });
+  }
+
+  async recordCustomViolation(attemptId: string, violationType: string): Promise<any> {
+    return this.request(`/api/attempts/${attemptId}/violations/custom?violationType=${encodeURIComponent(violationType)}`, { method: 'POST' });
+  }
+
+  async recordTabSwitch(attemptId: string): Promise<any> {
+    return this.request(`/api/attempts/${attemptId}/tab-switch`, { method: 'POST' });
+  }
+
+  // Additional attempt service methods
+  async getStudentAttemptsAdmin(studentId: string, params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+
+    return this.request(`/api/attempts/student/${studentId}?${queryParams.toString()}`);
+  }
+
+  async getExamAttemptStatistics(examId: string): Promise<any> {
+    return this.request(`/api/attempts/exam/${examId}/statistics`);
+  }
+
+  async getExamAttemptsCount(examId: string): Promise<any> {
+    return this.request(`/api/attempts/exam/${examId}/count`);
+  }
+
+  // ==================== Question Service Methods ====================
+
+  async getQuestion(questionId: string): Promise<any> {
+    return this.request(`/api/questions/${questionId}`);
+  }
+
+  async deleteQuestion(questionId: string): Promise<any> {
+    return this.request(`/api/questions/${questionId}`, { method: 'DELETE' });
+  }
+
+  async getExamQuestions(examId: string): Promise<any> {
+    return this.request(`/api/questions/exam/${examId}`);
+  }
+
+  // Question service methods
+  async reorderQuestions(examId: string, questionIds: string[]): Promise<any> {
+    return this.request(`/api/questions/exam/${examId}/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify(questionIds),
+    });
+  }
+
+  async getQuestionsForGrading(questionIds: string[]): Promise<any> {
+    return this.request('/api/questions/internal/batch', {
+      method: 'POST',
+      body: JSON.stringify(questionIds),
+    });
+  }
+
+  async bulkCreateQuestions(questions: any[]): Promise<any> {
+    return this.request('/api/questions/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ questions }),
+    });
+  }
+
+  async validateExamQuestions(examId: string): Promise<any> {
+    return this.request(`/api/questions/exam/${examId}/validate`);
+  }
+
+  async getTotalMarks(examId: string): Promise<any> {
+    return this.request(`/api/questions/exam/${examId}/total-marks`);
+  }
+
+  async getExamQuestionsSummary(examId: string): Promise<any> {
+    return this.request(`/api/questions/exam/${examId}/summary`);
+  }
+
+  async getQuestionExamStatistics(examId: string): Promise<any> {
+    return this.request(`/api/questions/exam/${examId}/statistics`);
+  }
+
+  async deleteAllExamQuestions(examId: string): Promise<any> {
+    return this.request(`/api/questions/exam/${examId}/all`, { method: 'DELETE' });
+  }
+
+  async evaluatePolicy(payload: any): Promise<any> {
+    return this.request('/api/policy/evaluate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // ==================== Profile Service Methods ====================
+
+  async getMyProfile(): Promise<any> {
+    return this.request('/api/profiles/profile/me');
+  }
+
+  async updateMyProfile(profileData: any): Promise<any> {
+    return this.request('/api/profiles/profile/me', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  async uploadMyProfilePicture(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.request('/api/profiles/profile/me/picture', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
+
+  async deleteMyProfilePicture(): Promise<any> {
+    return this.request('/api/profiles/profile/me/picture', {
+      method: 'DELETE',
+    });
+  }
+
+  async updateMyInstitution(institution: string): Promise<any> {
+    return this.request('/api/profiles/profile/me/institution', {
+      method: 'PUT',
+      body: JSON.stringify({ institution }),
+    });
+  }
+
+  // User Profile Methods
+  async deactivateProfile(userId: string): Promise<any> {
+    return this.request(`/api/profiles/${userId}/deactivate`, {
+      method: 'PUT',
+    });
+  }
+
+  async activateProfile(userId: string): Promise<any> {
+    return this.request(`/api/profiles/${userId}/activate`, {
+      method: 'PUT',
+    });
+  }
+
+  async getUserProfile(userId: string): Promise<any> {
+    return this.request(`/api/profiles/profile/${userId}`);
+  }
+
+  async getUserStats(): Promise<any> {
+    return this.request('/api/profiles/stats');
+  }
+
+  async getAllProfiles(params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+
+    return this.request(`/api/profiles/all?${queryParams.toString()}`);
+  }
+
+  // Additional admin methods
+  async lockUser(userId: string): Promise<any> {
+    return this.request(`/api/admin/users/${userId}/lock`, {
+      method: 'PUT',
+    });
+  }
+
+  async unlockUser(userId: string): Promise<any> {
+    return this.request(`/api/admin/users/${userId}/unlock`, {
+      method: 'PUT',
+    });
+  }
+
+  async enableUser(userId: string): Promise<any> {
+    return this.request(`/api/admin/users/${userId}/enable`, {
+      method: 'PUT',
+    });
+  }
+
+  async disableUser(userId: string): Promise<any> {
+    return this.request(`/api/admin/users/${userId}/disable`, {
+      method: 'PUT',
+    });
+  }
+
+  async assignRole(userId: string, role: string): Promise<any> {
+    return this.request(`/api/auth/roles/${userId}/assign/${role}`, {
+      method: 'POST',
+    });
+  }
+
+  async removeRole(userId: string, role: string): Promise<any> {
+    return this.request(`/api/auth/roles/${userId}/remove/${role}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async searchProfiles(keyword: string, params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('keyword', keyword);
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+
+    return this.request(`/api/profiles/all/search?${queryParams.toString()}`);
+  }
+
+  async getProfilesByInstitution(institution: string, params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+
+    return this.request(`/api/profiles/all/institution/${encodeURIComponent(institution)}?${queryParams.toString()}`);
+  }
+
+  async getProfilesByCity(city: string, params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+
+    return this.request(`/api/profiles/all/city/${encodeURIComponent(city)}?${queryParams.toString()}`);
+  }
+
+  // ==================== Result Service Methods ====================
+
+  // Student Operations
+  async getResult(id: string): Promise<any> {
+    return this.request(`/api/results/${id}`);
+  }
+
+  async getMyResults(params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
+    return this.request(`/api/results/my-results?${queryParams.toString()}`);
+  }
+
+  async getMyExamResults(examId: string, params?: { page?: number; size?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    return this.request(`/api/results/my-results/exam/${examId}?${queryParams.toString()}`);
+  }
+
+  async getMyStatistics(): Promise<any> {
+    return this.request('/api/results/my-statistics');
+  }
+
+  // Missing endpoints from OpenAPI spec
+  async deleteResult(id: string): Promise<any> {
+    return this.request(`/api/results/${id}`, { method: 'DELETE' });
+  }
+
+  async unpublishResult(id: string): Promise<any> {
+    return this.request(`/api/results/${id}/unpublish`, { method: 'POST' });
+  }
+
+  async gradeResult(id: string, request: GradeResultRequest): Promise<any> {
+    return this.request(`/api/results/${id}/grade`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async publishResult(id: string, request: PublishResultRequest): Promise<any> {
+    return this.request(`/api/results/${id}/publish`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  // Teacher/Admin Operations
+  async publishResultAdmin(resultId: string, request: PublishResultRequest): Promise<any> {
+    return this.request(`/api/results/${resultId}/publish`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async unpublishResultAdmin(resultId: string): Promise<any> {
+    return this.request(`/api/results/${resultId}/unpublish`, { method: 'POST' });
+  }
+
+  async gradeResultAdmin(resultId: string, request: GradeResultRequest): Promise<any> {
+    return this.request(`/api/results/${resultId}/grade`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getExamResults(examId: string, params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
+    return this.request(`/api/results/exam/${examId}?${queryParams.toString()}`);
+  }
+
+  async getExamStatistics(examId: string): Promise<any> {
+    return this.request(`/api/results/exam/${examId}/statistics`);
+  }
+
+  async getTopScorers(examId: string, limit = 10): Promise<any> {
+    return this.request(`/api/results/exam/${examId}/top-scorers?limit=${limit}`);
+  }
+
+  async calculateRankings(examId: string): Promise<any> {
+    return this.request(`/api/results/exam/${examId}/calculate-rankings`, { method: 'POST' });
+  }
+
+  async getPendingGradingResults(): Promise<any> {
+    return this.request('/api/results/pending-grading');
+  }
+
+  async getPendingGradingByExam(examId: string): Promise<any> {
+    return this.request(`/api/results/exam/${examId}/pending-grading`);
+  }
+
+  async getSuspiciousResults(): Promise<any> {
+    return this.request('/api/results/suspicious');
+  }
+
+  async getSuspiciousResultsByExam(examId: string): Promise<any> {
+    return this.request(`/api/results/exam/${examId}/suspicious`);
+  }
+
+  async getStudentStatistics(studentId: string): Promise<any> {
+    return this.request(`/api/results/student/${studentId}/statistics`);
+  }
+
+  // Admin Only Operations
+  async deleteResultAdmin(resultId: string): Promise<any> {
+    return this.request(`/api/results/${resultId}`, { method: 'DELETE' });
+  }
+
+  async getAllResults(params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
+    return this.request(`/api/results/all?${queryParams.toString()}`);
+  }
+
+  async resultServiceHealth(): Promise<any> {
+    return this.request('/api/results/health');
+  }
+
+  // ==================== Exam Service Methods ====================
+
+  async getAllExams(params?: { page?: number; size?: number; sortBy?: string; sortDir?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
+    return this.request(`/api/exams/all?${queryParams.toString()}`);
+  }
+
+  // ==================== Notification Service Methods ====================
+
+  async markNotificationAsRead(id: string): Promise<any> {
+    return this.request(`/api/notifications/${id}/read`, { method: 'PUT' });
+  }
+
+  async markAllNotificationsAsRead(): Promise<any> {
+    return this.request('/api/notifications/my/read-all', { method: 'PUT' });
+  }
+
+  async sendNotification(payload: any): Promise<any> {
+    return this.request('/api/notifications', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getNotification(id: string): Promise<any> {
+    return this.request(`/api/notifications/${id}`);
+  }
+
+  async deleteNotification(id: string): Promise<any> {
+    return this.request(`/api/notifications/${id}`, { method: 'DELETE' });
+  }
+
+  async getMyNotifications(params?: { page?: number; size?: number; sort?: string[] }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString());
+    if (params?.sort) {
+      params.sort.forEach(s => queryParams.append('sort', s));
+    }
+    return this.request(`/api/notifications/my?${queryParams.toString()}`);
+  }
+
+  async getUnreadNotifications(): Promise<any> {
+    return this.request('/api/notifications/my/unread');
+  }
+
+  async getUnreadNotificationCount(): Promise<any> {
+    return this.request('/api/notifications/my/unread/count');
+  }
+}
+
+// Use relative URLs to go through Next.js proxy
+const API_URL = '';
+export const apiClient = new APIClient(API_URL);
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\auth.ts %%%%
+import { refreshAccessToken, decodeToken, revokeToken, type UserInfo } from './oauth2';
+
+const ACCESS_TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
+const EXPIRES_AT_KEY = 'token_expires_at';
+
+let refreshPromise: Promise<string | null> | null = null;
+
+/**
+ * Store tokens in localStorage
+ */
+export function storeTokens(
+  accessToken: string,
+  refreshToken: string,
+  expiresIn: number
+): void {
+  if (typeof window === 'undefined') return;
+
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  localStorage.setItem(
+    EXPIRES_AT_KEY,
+    String(Date.now() + expiresIn * 1000)
+  );
+}
+
+/**
+ * Get access token, refreshing if necessary
+ */
+export async function getAccessToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+
+  let accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const expiresAt = localStorage.getItem(EXPIRES_AT_KEY);
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+  // Check if token is expired (with 5 minute buffer)
+  if (expiresAt && Date.now() >= parseInt(expiresAt) - 5 * 60 * 1000) {
+    if (refreshToken) {
+      try {
+        // Prevent multiple concurrent refresh requests (Race Condition Fix)
+        if (!refreshPromise) {
+          refreshPromise = refreshAccessToken(refreshToken)
+            .then((tokens) => {
+              storeTokens(tokens.access_token, tokens.refresh_token, tokens.expires_in);
+              return tokens.access_token;
+            })
+            .catch((error) => {
+              console.error('Token refresh failed:', error);
+              clearTokens();
+              return null;
+            })
+            .finally(() => {
+              refreshPromise = null;
+            });
+        }
+        accessToken = await refreshPromise;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        clearTokens();
+        return null;
+      }
+    } else {
+      clearTokens();
+      return null;
+    }
+  }
+
+  return accessToken;
+}
+
+/**
+ * Get current user info from token
+ */
+export async function getCurrentUser(): Promise<UserInfo | null> {
+  const token = await getAccessToken();
+  if (!token) return null;
+  return decodeToken(token);
+}
+
+/**
+ * Check if user is authenticated
+ */
+export async function isAuthenticated(): Promise<boolean> {
+  const token = await getAccessToken();
+  return token !== null;
+}
+
+/**
+ * Clear all stored tokens
+ */
+export function clearTokens(): void {
+  if (typeof window === 'undefined') return;
+
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(EXPIRES_AT_KEY);
+
+  // Dispatch storage event to notify UI components (Navbar) of state change
+  window.dispatchEvent(new Event('storage'));
+}
+
+/**
+ * Logout user
+ */
+export async function logout(): Promise<void> {
+  console.log('Starting logout process...');
+
+  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+  console.log('Tokens found:', { accessToken: !!accessToken, refreshToken: !!refreshToken });
+
+  // Perform backend logout (OAuth2 logout endpoint)
+  try {
+    console.log('Calling backend logout endpoint...');
+    const response = await fetch('http://localhost:8080/logout', {
+      method: 'POST',
+      credentials: 'include', // Include httpOnly cookies if any
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000',
+      },
+    });
+    console.log('Backend logout response:', response.status, response.statusText);
+  } catch (error) {
+    console.warn('Backend logout failed:', error);
+  }
+
+  // Revoke tokens (best effort - don't fail if revocation fails)
+  try {
+    if (accessToken) {
+      console.log('Revoking access token...');
+      await revokeToken(accessToken, 'access_token');
+      console.log('Access token revoked');
+    }
+  } catch (error) {
+    console.warn('Failed to revoke access token:', error);
+  }
+
+  try {
+    if (refreshToken) {
+      console.log('Revoking refresh token...');
+      await revokeToken(refreshToken, 'refresh_token');
+      console.log('Refresh token revoked');
+    }
+  } catch (error) {
+    console.warn('Failed to revoke refresh token:', error);
+  }
+
+  console.log('Clearing local tokens...');
+  clearTokens();
+  console.log('Logout process complete');
+}
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\hooks\use-auto-save.ts %%%%
+// lib/hooks/use-auto-save.ts - Auto-save hook for exam attempts
+
+import { useEffect, useRef } from 'react';
+import { attemptService } from '@/lib/api/attempt';
+
+interface AutoSaveOptions {
+  attemptId: string;
+  answers: Record<string, any>;
+  enabled?: boolean;
+  interval?: number; // milliseconds
+  onSave?: (saved: boolean) => void;
+  onError?: (error: Error) => void;
+}
+
+export function useAutoSave({
+  attemptId,
+  answers,
+  enabled = true,
+  interval = 10000, // 10 seconds default
+  onSave,
+  onError
+}: AutoSaveOptions) {
+  const lastSavedAnswers = useRef('');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    if (!enabled || !attemptId) return;
+
+    const currentAnswers = JSON.stringify(answers);
+
+    // Only save if answers have changed
+    if (currentAnswers === lastSavedAnswers.current) return;
+
+    // Clear existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Set new timeout for auto-save
+    timeoutRef.current = setTimeout(async () => {
+      if (isSavingRef.current) return; // Prevent concurrent saves
+
+      try {
+        isSavingRef.current = true;
+
+        // Prepare save promises for all answers
+        const savePromises = Object.entries(answers).map(([questionId, answer]) => {
+          const saveData = {
+            questionId,
+            selectedOptions: answer.selectedOptions || [],
+            answerText: answer.answerText || '',
+            flagged: answer.flagged || false,
+            timeSpentSeconds: answer.timeSpent || 0
+          };
+
+          return attemptService.saveAnswer(attemptId, saveData);
+        });
+
+        // Save all answers concurrently
+        await Promise.all(savePromises);
+
+        // Update last saved state
+        lastSavedAnswers.current = currentAnswers;
+
+        // Call success callback
+        onSave?.(true);
+
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+        onError?.(error instanceof Error ? error : new Error('Auto-save failed'));
+      } finally {
+        isSavingRef.current = false;
+      }
+    }, interval);
+
+    // Cleanup function
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [attemptId, answers, enabled, interval, onSave, onError]);
+
+  // Manual save function
+  const saveNow = async (): Promise<boolean> => {
+    if (!enabled || !attemptId || isSavingRef.current) {
+      return false;
+    }
+
+    try {
+      isSavingRef.current = true;
+
+      const savePromises = Object.entries(answers).map(([questionId, answer]) =>
+        attemptService.saveAnswer(attemptId, {
+          questionId,
+          selectedOptions: answer.selectedOptions || [],
+          answerText: answer.answerText || '',
+          flagged: answer.flagged || false,
+          timeSpentSeconds: answer.timeSpent || 0
+        })
+      );
+
+      await Promise.all(savePromises);
+
+      lastSavedAnswers.current = JSON.stringify(answers);
+      onSave?.(true);
+
+      return true;
+    } catch (error) {
+      console.error('Manual save failed:', error);
+      onError?.(error instanceof Error ? error : new Error('Manual save failed'));
+      return false;
+    } finally {
+      isSavingRef.current = false;
+    }
+  };
+
+  // Force immediate save (useful before exam submission)
+  const forceSave = async (): Promise<boolean> => {
+    // Clear any pending auto-save
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    return saveNow();
+  };
+
+  return {
+    saveNow,
+    forceSave,
+    isSaving: isSavingRef.current
+  };
+}
+
+// Simplified version for basic usage
+export function useAutoSaveSimple(
+  attemptId: string,
+  answers: Record<string, any>,
+  enabled = true
+) {
+  return useAutoSave({
+    attemptId,
+    answers,
+    enabled,
+    onSave: (saved) => {
+      if (saved) {
+        console.log('Auto-saved at', new Date().toLocaleTimeString());
+      }
+    },
+    onError: (error) => {
+      console.error('Auto-save error:', error);
+    }
+  });
+}
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\hooks\use-bulk-operations.ts %%%%
+// lib/hooks/use-bulk-operations.ts - Bulk operations for teachers and admins
+
+import { useState, useCallback } from 'react';
+import { questionService } from '@/lib/api/question';
+import { examService } from '@/lib/api/exam';
+import { authService } from '@/lib/api/auth';
+import { CreateQuestionRequest, QuestionDTO } from '@/lib/types';
+
+interface BulkQuestionImportResult {
+  successful: Array<QuestionDTO | CreateQuestionRequest>;
+  failed: Array<{ data: any; error: string }>;
+  total: number;
+  successCount: number;
+  failureCount: number;
+}
+
+interface BulkUserOperationResult {
+  successful: any[];
+  failed: Array<{ userId: string; error: string }>;
+  total: number;
+  successCount: number;
+  failureCount: number;
+}
+
+export function useBulkQuestionImport(examId: string) {
+  const [isImporting, setIsImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState<BulkQuestionImportResult | null>(null);
+
+  const importQuestions = useCallback(async (
+    questions: CreateQuestionRequest[],
+    onProgress?: (completed: number, total: number) => void
+  ): Promise<BulkQuestionImportResult> => {
+    setIsImporting(true);
+    setProgress(0);
+    setResult(null);
+
+    const successful: Array<QuestionDTO | CreateQuestionRequest> = [];
+    const failed: Array<{ data: any; error: string }> = [];
+    const total = questions.length;
+
+    try {
+      // Process in batches to avoid overwhelming the server
+      const batchSize = 10;
+
+      for (let i = 0; i < questions.length; i += batchSize) {
+        const batch = questions.slice(i, i + batchSize);
+
+        // Process batch concurrently
+        const batchPromises = batch.map(async (questionData, index) => {
+          try {
+            const question = await questionService.createQuestion({
+              ...questionData,
+              examId
+            });
+            return { success: true, data: question, index: i + index };
+          } catch (error) {
+            return {
+              success: false,
+              data: questionData,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              index: i + index
+            };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+
+        // Process results
+        batchResults.forEach(result => {
+          if (result.success && result.data) {
+            successful.push(result.data);
+          } else if (!result.success) {
+            failed.push({ data: result.data, error: result.error || 'Unknown error' });
+          }
+        });
+
+        // Update progress
+        const completed = Math.min(i + batchSize, total);
+        setProgress((completed / total) * 100);
+        onProgress?.(completed, total);
+      }
+
+      const finalResult: BulkQuestionImportResult = {
+        successful,
+        failed,
+        total,
+        successCount: successful.length,
+        failureCount: failed.length
+      };
+
+      setResult(finalResult);
+      return finalResult;
+
+    } catch (error) {
+      console.error('Bulk import failed:', error);
+      throw error;
+    } finally {
+      setIsImporting(false);
+    }
+  }, [examId]);
+
+  const clearResult = useCallback(() => {
+    setResult(null);
+    setProgress(0);
+  }, []);
+
+  return {
+    importQuestions,
+    isImporting,
+    progress,
+    result,
+    clearResult
+  };
+}
+
+export function useBulkUserOperations() {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState<BulkUserOperationResult | null>(null);
+
+  const bulkAssignRoles = useCallback(async (
+    userIds: string[],
+    role: 'STUDENT' | 'TEACHER' | 'ADMIN',
+    onProgress?: (completed: number, total: number) => void
+  ): Promise<BulkUserOperationResult> => {
+    setIsProcessing(true);
+    setProgress(0);
+    setResult(null);
+
+    const successful: any[] = [];
+    const failed: Array<{ userId: string; error: string }> = [];
+    const total = userIds.length;
+
+    try {
+      // Process in batches
+      const batchSize = 5;
+
+      for (let i = 0; i < userIds.length; i += batchSize) {
+        const batch = userIds.slice(i, i + batchSize);
+
+        const batchPromises = batch.map(async (userId, index) => {
+          try {
+            const result = await authService.assignRole(userId, role);
+            return { success: true, data: result, userId, index: i + index };
+          } catch (error) {
+            return {
+              success: false,
+              userId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              index: i + index
+            };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+
+        batchResults.forEach(result => {
+          if (result.success) {
+            successful.push(result.data);
+          } else {
+            failed.push({ userId: result.userId, error: result.error || 'Unknown error' });
+          }
+        });
+
+        const completed = Math.min(i + batchSize, total);
+        setProgress((completed / total) * 100);
+        onProgress?.(completed, total);
+      }
+
+      const finalResult: BulkUserOperationResult = {
+        successful,
+        failed,
+        total,
+        successCount: successful.length,
+        failureCount: failed.length
+      };
+
+      setResult(finalResult);
+      return finalResult;
+
+    } catch (error) {
+      console.error('Bulk role assignment failed:', error);
+      throw error;
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
+
+  const bulkUpdateUserStatus = useCallback(async (
+    userIds: string[],
+    action: 'enable' | 'disable' | 'lock' | 'unlock',
+    onProgress?: (completed: number, total: number) => void
+  ): Promise<BulkUserOperationResult> => {
+    setIsProcessing(true);
+    setProgress(0);
+    setResult(null);
+
+    const successful: any[] = [];
+    const failed: Array<{ userId: string; error: string }> = [];
+    const total = userIds.length;
+
+    try {
+      const batchSize = 5;
+
+      for (let i = 0; i < userIds.length; i += batchSize) {
+        const batch = userIds.slice(i, i + batchSize);
+
+        const batchPromises = batch.map(async (userId, index) => {
+          try {
+            let result;
+            switch (action) {
+              case 'enable':
+                result = await authService.enableUser(userId);
+                break;
+              case 'disable':
+                result = await authService.disableUser(userId);
+                break;
+              case 'lock':
+                result = await authService.lockUser(userId);
+                break;
+              case 'unlock':
+                result = await authService.unlockUser(userId);
+                break;
+            }
+            return { success: true, data: result, userId, index: i + index };
+          } catch (error) {
+            return {
+              success: false,
+              userId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              index: i + index
+            };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+
+        batchResults.forEach(result => {
+          if (result.success) {
+            successful.push(result.data);
+          } else {
+            failed.push({ userId: result.userId, error: result.error || 'Unknown error' });
+          }
+        });
+
+        const completed = Math.min(i + batchSize, total);
+        setProgress((completed / total) * 100);
+        onProgress?.(completed, total);
+      }
+
+      const finalResult: BulkUserOperationResult = {
+        successful,
+        failed,
+        total,
+        successCount: successful.length,
+        failureCount: failed.length
+      };
+
+      setResult(finalResult);
+      return finalResult;
+
+    } catch (error) {
+      console.error('Bulk status update failed:', error);
+      throw error;
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
+
+  const clearResult = useCallback(() => {
+    setResult(null);
+    setProgress(0);
+  }, []);
+
+  return {
+    bulkAssignRoles,
+    bulkUpdateUserStatus,
+    isProcessing,
+    progress,
+    result,
+    clearResult
+  };
+}
+
+export function useBulkExamOperations() {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState<any>(null);
+
+  const bulkPublishExams = useCallback(async (
+    examIds: string[],
+    onProgress?: (completed: number, total: number) => void
+  ) => {
+    setIsProcessing(true);
+    setProgress(0);
+
+    try {
+      const successful: any[] = [];
+      const failed: any[] = [];
+      const total = examIds.length;
+
+      const batchSize = 3; // Smaller batch for exam publishing
+
+      for (let i = 0; i < examIds.length; i += batchSize) {
+        const batch = examIds.slice(i, i + batchSize);
+
+        const batchPromises = batch.map(async (examId) => {
+          try {
+            const result = await examService.publishExam(examId);
+            return { success: true, data: result, examId };
+          } catch (error) {
+            return {
+              success: false,
+              examId,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+
+        batchResults.forEach(result => {
+          if (result.success) {
+            successful.push(result.data);
+          } else {
+            failed.push({ examId: result.examId, error: result.error });
+          }
+        });
+
+        const completed = Math.min(i + batchSize, total);
+        setProgress((completed / total) * 100);
+        onProgress?.(completed, total);
+      }
+
+      setResult({
+        operation: 'publish',
+        successful,
+        failed,
+        total,
+        successCount: successful.length,
+        failureCount: failed.length
+      });
+
+      return {
+        successful,
+        failed,
+        total,
+        successCount: successful.length,
+        failureCount: failed.length
+      };
+
+    } catch (error) {
+      console.error('Bulk publish failed:', error);
+      throw error;
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
+
+  const clearResult = useCallback(() => {
+    setResult(null);
+    setProgress(0);
+  }, []);
+
+  return {
+    bulkPublishExams,
+    isProcessing,
+    progress,
+    result,
+    clearResult
+  };
+}
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\hooks\use-exam.ts %%%%
+// lib/hooks/use-exam.ts - Custom hooks for exam management
+
+import { useState, useEffect } from 'react';
+import { examService } from '@/lib/api/exam';
+import { useExamStore } from '@/lib/stores/exam-store';
+import type { ExamDTO, CreateExamRequest } from '@/lib/types';
+
+export function useExam(examId?: string) {
+  const { currentExam, setCurrentExam, setLoading, setError } = useExamStore();
+  const [exam, setExam] = useState<ExamDTO | null>(currentExam);
+
+  useEffect(() => {
+    if (!examId) return;
+
+    const fetchExam = async () => {
+      try {
+        setLoading(true);
+        const data = await examService.getExam(examId);
+        setExam(data);
+        setCurrentExam(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch exam');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExam();
+  }, [examId, setCurrentExam, setLoading, setError]);
+
+  return { exam };
+}
+
+export function useExams() {
+  const { exams, setExams, setLoading, setError } = useExamStore();
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const fetchExams = async (pageNum = 0, append = false) => {
+    try {
+      if (append) {
+        setIsLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      const response = await examService.getMyExams(pageNum);
+
+      if (append) {
+        setExams([...exams, ...response.content]);
+      } else {
+        setExams(response.content);
+      }
+
+      setHasMore(!response.last);
+      setPage(pageNum);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch exams');
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExams(0);
+  }, []);
+
+  const loadMore = () => {
+    if (hasMore && !isLoadingMore) {
+      fetchExams(page + 1, true);
+    }
+  };
+
+  const refresh = () => {
+    fetchExams(0);
+  };
+
+  return {
+    exams,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+    refresh
+  };
+}
+
+export function useCreateExam() {
+  const { addExam, setLoading, setError } = useExamStore();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const createExam = async (data: CreateExamRequest): Promise<ExamDTO | null> => {
+    try {
+      setIsCreating(true);
+      setLoading(true);
+
+      const exam = await examService.createExam(data);
+      addExam(exam);
+      setError(null);
+
+      return exam;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create exam';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsCreating(false);
+      setLoading(false);
+    }
+  };
+
+  return {
+    createExam,
+    isCreating
+  };
+}
+
+export function useUpdateExam() {
+  const { updateExam, setLoading, setError } = useExamStore();
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const update = async (id: string, updates: Partial<ExamDTO>): Promise<ExamDTO | null> => {
+    try {
+      setIsUpdating(true);
+      setLoading(true);
+
+      const exam = await examService.updateExam(id, updates);
+      updateExam(id, exam);
+      setError(null);
+
+      return exam;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update exam';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsUpdating(false);
+      setLoading(false);
+    }
+  };
+
+  return {
+    updateExam: update,
+    isUpdating
+  };
+}
+
+export function useDeleteExam() {
+  const { removeExam, setLoading, setError } = useExamStore();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const deleteExam = async (id: string): Promise<void> => {
+    try {
+      setIsDeleting(true);
+      setLoading(true);
+
+      await examService.deleteExam(id);
+      removeExam(id);
+      setError(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete exam';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsDeleting(false);
+      setLoading(false);
+    }
+  };
+
+  return {
+    deleteExam,
+    isDeleting
+  };
+}
+
+export function usePublishExam() {
+  const { updateExam, setLoading, setError } = useExamStore();
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const publishExam = async (id: string): Promise<ExamDTO | null> => {
+    try {
+      setIsPublishing(true);
+      setLoading(true);
+
+      const exam = await examService.publishExam(id);
+      updateExam(id, exam);
+      setError(null);
+
+      return exam;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to publish exam';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsPublishing(false);
+      setLoading(false);
+    }
+  };
+
+  return {
+    publishExam,
+    isPublishing
+  };
+}
+
+export function useExamStats() {
+  const [stats, setStats] = useState({
+    totalExams: 0,
+    publishedExams: 0,
+    draftExams: 0,
+    activeExams: 0
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchStats = async () => {
+    try {
+      setIsLoading(true);
+
+      const [publishedCount, myExamCount] = await Promise.all([
+        examService.getPublishedExamCount(),
+        examService.getMyExamCount()
+      ]);
+
+      setStats({
+        totalExams: myExamCount,
+        publishedExams: publishedCount,
+        draftExams: myExamCount - publishedCount,
+        activeExams: publishedCount
+      });
+    } catch (error) {
+      console.error('Failed to fetch exam stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  return {
+    stats,
+    isLoading,
+    refresh: fetchStats
+  };
+}
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\oauth2.ts %%%%
+import { randomBytes, createHash } from 'crypto';
+
+// Generate PKCE challenge from an existing verifier
+export function generateChallengeFromVerifier(verifier: string): string {
+  return createHash('sha256')
+    .update(verifier)
+    .digest('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+const AUTH_SERVER_URL = process.env.NEXT_PUBLIC_API_GATEWAY || 'http://localhost:8080';
+const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID || 'oerms-nextjs-client';
+const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:3000/auth/callback';
+
+export interface UserInfo {
+  sub: string;
+  userId: string;
+  email: string;
+  username: string;
+  roles: string[];
+  authorities: string[];
+}
+
+// Generate PKCE code verifier and challenge
+export function generatePKCE() {
+  const verifier = randomBytes(32).toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+  const challenge = createHash('sha256')
+    .update(verifier)
+    .digest('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+  return { verifier, challenge };
+}
+
+// Generate random state for CSRF protection
+export function generateState(): string {
+  return randomBytes(16).toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+// Build authorization URL
+export function getAuthorizationUrl(state: string, codeChallenge: string): string {
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'code',
+    scope: 'openid profile email read write',
+    state: state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+  });
+
+  return `${AUTH_SERVER_URL}/oauth2/authorize?${params.toString()}`;
+}
+
+// Exchange authorization code for tokens
+export async function exchangeCodeForTokens(code: string, codeVerifier: string) {
+  const response = await fetch(`${AUTH_SERVER_URL}/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Origin': FRONTEND_URL,
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: REDIRECT_URI,
+      client_id: CLIENT_ID,
+      code_verifier: codeVerifier,
+    }),
+  });
+
+  if (!response.ok) {
+    let errorMessage = `Token exchange failed with status ${response.status}`;
+    try {
+      const error = await response.json();
+      errorMessage = `Token exchange failed: ${error.error_description || error.error || response.statusText}`;
+    } catch (parseError) {
+      // If response is not JSON (e.g., HTML error page), use status text
+      errorMessage = `Token exchange failed: ${response.statusText || 'Unknown error'}`;
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+}
+
+// Refresh access token
+export async function refreshAccessToken(refreshToken: string) {
+  const response = await fetch(`${AUTH_SERVER_URL}/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Origin': FRONTEND_URL,
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: CLIENT_ID,
+    }),
+  });
+
+  if (!response.ok) {
+    let errorMessage = `Token refresh failed with status ${response.status}`;
+    try {
+      const error = await response.json();
+      errorMessage = `Token refresh failed: ${error.error_description || error.error || response.statusText}`;
+    } catch (parseError) {
+      // If response is not JSON (e.g., HTML error page), use status text
+      errorMessage = `Token refresh failed: ${response.statusText || 'Unknown error'}`;
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+}
+
+/**
+ * Decode JWT token and extract user information
+ * Note: This is client-side decoding for display purposes only
+ * Always verify tokens on the server!
+ */
+export function decodeToken(token: string): UserInfo | null {
+  try {
+    const payload = token.split('.')[1];
+
+    // Convert base64url to base64
+    const base64 = payload
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+
+    // Add padding if needed
+    const paddedBase64 = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+
+    const decoded = JSON.parse(
+      Buffer.from(paddedBase64, 'base64').toString('utf-8')
+    );
+    return decoded;
+  } catch (error) {
+    console.error('Failed to decode token:', error);
+    return null;
+  }
+}
+
+/**
+ * Revoke (logout) tokens
+ */
+export async function revokeToken(token: string, tokenTypeHint: 'access_token' | 'refresh_token' = 'access_token'): Promise<void> {
+  try {
+    await fetch(`${AUTH_SERVER_URL}/oauth2/revoke`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': FRONTEND_URL,
+      },
+      body: new URLSearchParams({
+        token: token,
+        token_type_hint: tokenTypeHint,
+        client_id: CLIENT_ID,
+      }),
+    });
+  } catch (error) {
+    console.error('Token revocation failed:', error);
+    // Don't throw - best effort revocation
+  }
+}
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\page.tsx %%%%
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { apiClient } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+
+interface Question {
+  id: string;
+  text: string;
+  options?: any[];
+  marks: number;
+  type?: string;
+}
+
+interface Answer {
+  questionId: string;
+  selectedOption?: string;
+  selectedOptions?: string[];
+  textAnswer?: string;
+  marksObtained: number;
+  totalMarks: number;
+  status?: string; // Backend status might be unreliable, we'll calculate too
+  timeTaken?: number;
+  questionText?: string;
+}
+
+interface Result {
+  id: string;
+  examId: string;
+  examTitle: string;
+  totalMarks: number;
+  obtainedMarks: number;
+  percentage: number;
+  status: string;
+  publishedAt: string;
+  answers: Record<string, Answer> | Answer[];
+  studentId: string;
+}
+
+export default function ResultDetailsPage() {
+  const params = useParams();
+  const router = useRouter();
+  // Handle potential array or undefined params safely
+  const rawResultId = params?.resultId;
+  const resultId = Array.isArray(rawResultId) ? rawResultId[0] : rawResultId;
+
+  const [result, setResult] = useState<Result | null>(null);
+  const [questions, setQuestions] = useState<Record<string, Question>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!resultId) {
+        setError('Invalid Result ID');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        // 1. Fetch Result Details
+        const resultData = await apiClient.getResult(resultId);
+        setResult(resultData);
+
+        if (!resultData) {
+          throw new Error('Result data not found');
+        }
+
+        // 2. Fetch Exam Questions to get text/content
+        // We try to fetch questions. If student doesn't have permission for full questions,
+        // we might need to rely on what's in the result or handle gracefully.
+        if (resultData?.examId) {
+          let qMap: Record<string, Question> = {};
+
+          try {
+            // Try fetching questions for the exam to map IDs to Text
+            // Note: Depending on backend permissions, this might need a specific endpoint
+            const questionsData = await apiClient.getExamQuestionsForStudent(resultData.examId);
+            
+            const qMap: Record<string, Question> = {};
+            if (Array.isArray(questionsData)) {
+              questionsData.forEach((q: any) => {
+                qMap[q.id] = q;
+              });
+            }
+            setQuestions(qMap);
+          } catch (qError) {
+            console.warn('Could not fetch question details:', qError);
+            // Continue without question text if fetch fails
+            console.warn('Could not fetch question details via bulk endpoint:', qError);
+          }
+
+          // Fallback: Fetch individual questions if missing
+          try {
+            const answersList = Array.isArray(resultData.answers) 
+              ? resultData.answers 
+              : Object.entries(resultData.answers || {}).map(([key, val]) => ({ ...val, questionId: key }));
+              
+            const missingIds = answersList
+              .map((a: any) => a.questionId)
+              .filter((id: string) => !qMap[id]);
+
+            if (missingIds.length > 0) {
+              const results = await Promise.allSettled(
+                missingIds.map((id: string) => apiClient.getQuestion(id))
+              );
+              
+              results.forEach((res) => {
+                if (res.status === 'fulfilled' && res.value) {
+                  qMap[res.value.id] = res.value;
+                }
+              });
+            }
+          } catch (fallbackError) {
+            console.warn('Fallback question fetch failed:', fallbackError);
+          }
+          
+          setQuestions(qMap);
+        }
+      } catch (err: any) {
+        console.error('Failed to load result:', err);
+        if (err.status === 500) {
+          setError('Internal Server Error. Please try again later.');
+        } else if (err.status === 404) {
+          setError('Result not found.');
+        } else {
+          setError(err.message || 'Failed to load result details');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [resultId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error || !result) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg text-center max-w-md w-full">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Error Loading Result</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{error || 'Result not found'}</p>
+          <Button onClick={() => router.push('/dashboard')} variant="outline">
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Normalize answers to array
+  const answersList = Array.isArray(result.answers) 
+    ? result.answers 
+    : Object.entries(result.answers || {}).map(([key, val]) => ({ ...val, questionId: key }));
+
+  // Calculate stats
+  const totalQuestions = answersList.length;
+  const correctAnswers = answersList.filter(a => a.marksObtained === a.totalMarks).length;
+  const partialAnswers = answersList.filter(a => a.marksObtained > 0 && a.marksObtained < a.totalMarks).length;
+  const skippedAnswers = answersList.filter(a => !a.selectedOption && !a.textAnswer && (!a.selectedOptions || a.selectedOptions.length === 0)).length;
+
+  const getStatusColor = (obtained: number, total: number) => {
+    if (obtained === total && total > 0) return 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800';
+    if (obtained > 0) return 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800';
+    return 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 border-red-200 dark:border-red-800';
+  };
+
+  const getStatusText = (obtained: number, total: number) => {
+    if (obtained === total && total > 0) return 'Correct';
+    if (obtained > 0) return 'Partial';
+    return 'Incorrect';
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto space-y-6">
+        
+        {/* Header & Navigation */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1 mb-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Dashboard
+            </Link>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{result.examTitle || 'Exam Result'}</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Published: {new Date(result.publishedAt).toLocaleString()}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => window.print()}>
+              Print Result
+            </Button>
+          </div>
+        </div>
+
+        {/* Score Overview Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 sm:p-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+            
+            {/* Percentage Circle */}
+            <div className="flex flex-col items-center justify-center">
+              <div className="relative w-40 h-40">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="transparent"
+                    className="text-gray-100 dark:text-gray-700"
+                  />
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="transparent"
+                    strokeDasharray={440}
+                    strokeDashoffset={440 - (440 * result.percentage) / 100}
+                    className={`${result.percentage >= 50 ? 'text-blue-600 dark:text-blue-500' : 'text-red-500'} transition-all duration-1000 ease-out`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-4xl font-bold text-gray-900 dark:text-white">{Math.round(result.percentage)}%</span>
+                  <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${result.status === 'PASSED' || result.percentage >= 50 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                    {result.status || (result.percentage >= 50 ? 'Passed' : 'Failed')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Score</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {result.obtainedMarks}<span className="text-sm text-gray-400 font-normal">/{result.totalMarks}</span>
+                </p>
+              </div>
+              <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-xl text-center">
+                <p className="text-sm text-green-600 dark:text-green-400 mb-1">Correct</p>
+                <p className="text-2xl font-bold text-green-700 dark:text-green-300">{correctAnswers}</p>
+              </div>
+              <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl text-center">
+                <p className="text-sm text-red-600 dark:text-red-400 mb-1">Incorrect</p>
+                <p className="text-2xl font-bold text-red-700 dark:text-red-300">{answersList.length - correctAnswers - partialAnswers - skippedAnswers}</p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Skipped</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{skippedAnswers}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Question Breakdown */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white px-1">Detailed Breakdown</h2>
+          
+          {answersList.map((answer, index) => {
+            const question = questions[answer.questionId];
+            const statusText = getStatusText(answer.marksObtained, answer.totalMarks);
+            const statusClasses = getStatusColor(answer.marksObtained, answer.totalMarks);
+
+            return (
+              <div key={answer.questionId} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                {/* Question Header */}
+                <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Question {index + 1}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusClasses}`}>
+                        {statusText}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {answer.marksObtained}/{answer.totalMarks} Marks
+                      </span>
+                    </div>
+                    <div className="prose dark:prose-invert max-w-none">
+                      {question ? (
+                        <div dangerouslySetInnerHTML={{ __html: question.text }} />
+                      ) : answer.questionText ? (
+                        <div dangerouslySetInnerHTML={{ __html: answer.questionText }} />
+                      ) : (
+                        <p className="text-gray-500 italic">Question content loading or unavailable (ID: {answer.questionId})</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Answer Section */}
+                <div className="p-4 sm:p-6 bg-gray-50/50 dark:bg-gray-900/30">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* User Answer */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Your Answer</p>
+                      <div className={`p-3 rounded-lg border ${
+                        statusText === 'Correct' 
+                          ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
+                          : statusText === 'Partial'
+                            ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300'
+                            : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
+                      }`}>
+                        {answer.selectedOption ? (
+                          <span className="font-medium">{answer.selectedOption}</span>
+                        ) : answer.textAnswer ? (
+                          <span>{answer.textAnswer}</span>
+                        ) : (
+                          <span className="italic text-gray-500">No answer provided</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Correct Answer (if available in question data) */}
+                    {/* Note: Usually student endpoints might hide correct options unless explicitly allowed. 
+                        If we have question options, we can try to find the correct one. */}
+                    {question?.options && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Correct Answer</p>
+                        <div className="space-y-2">
+                          {question.options.map((opt: any) => {
+                            // Assuming option structure has 'isCorrect' or similar, or we just list them
+                            // If we don't have isCorrect flag, we might not be able to show this column accurately
+                            if (opt.isCorrect) {
+                              return (
+                                <div key={opt.id} className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300 flex items-center gap-2">
+                                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  <span>{opt.text}</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })}
+                          {/* Fallback if no options marked correct in data */}
+                          {!question.options.some((o: any) => o.isCorrect) && (
+                            <p className="text-sm text-gray-400 italic">Correct answer hidden</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Explanation if available */}
+                  {/* {question?.explanation && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Explanation</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">{question.explanation}</p>
+                    </div>
+                  )} */}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\stores\auth-store.ts %%%%
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type { User } from '@/lib/types';
+
+interface AuthState {
+  user: User | null;
+  accessToken: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+
+  // Actions
+  setUser: (user: User) => void;
+  setAccessToken: (token: string) => void;
+  logout: () => void;
+  hasRole: (role: string) => boolean;
+  setLoading: (loading: boolean) => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      isLoading: true,
+
+      setUser: (user) => set({
+        user,
+        isAuthenticated: true,
+        isLoading: false
+      }),
+
+      setAccessToken: (token) => set({
+        accessToken: token
+      }),
+
+      logout: () => set({
+        user: null,
+        accessToken: null,
+        isAuthenticated: false,
+        isLoading: false
+      }),
+
+      hasRole: (role) => {
+        const { user } = get();
+        return user?.roles.includes(role as any) ?? false;
+      },
+
+      setLoading: (loading) => set({ isLoading: loading })
+    }),
+    {
+      name: 'auth-storage',
+      // Only persist user data, not tokens (tokens are in httpOnly cookies)
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated
+      })
+    }
+  )
+);
+
+
+%%%% FILE: D:\projects\oerms\oerms-frontend\lib\stores\exam-store.ts %%%%
+// lib/stores/exam-store.ts - Exam state management with Zustand
+
+import { create } from 'zustand';
+import type { ExamDTO } from '@/lib/types';
+
+interface ExamState {
+  // Current exam being viewed/edited
+  currentExam: ExamDTO | null;
+
+  // List of exams
+  exams: ExamDTO[];
+
+  // UI state
+  isLoading: boolean;
+  error: string | null;
+
+  // Actions
+  setCurrentExam: (exam: ExamDTO | null) => void;
+  setExams: (exams: ExamDTO[]) => void;
+  addExam: (exam: ExamDTO) => void;
+  updateExam: (id: string, updates: Partial<ExamDTO>) => void;
+  removeExam: (id: string) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  reset: () => void;
+
+  // Computed properties
+  getExamById: (id: string) => ExamDTO | undefined;
+  getPublishedExams: () => ExamDTO[];
+  getDraftExams: () => ExamDTO[];
+  getActiveExams: () => ExamDTO[];
+}
+
+export const useExamStore = create<ExamState>((set, get) => ({
+  currentExam: null,
+  exams: [],
+  isLoading: false,
+  error: null,
+
+  setCurrentExam: (exam) => set({ currentExam: exam }),
+
+  setExams: (exams) => set({ exams, error: null }),
+
+  addExam: (exam) => set((state) => ({
+    exams: [exam, ...state.exams]
+  })),
+
+  updateExam: (id, updates) => set((state) => ({
+    exams: state.exams.map(exam =>
+      exam.id === id ? { ...exam, ...updates } : exam
+    ),
+    currentExam: state.currentExam?.id === id
+      ? { ...state.currentExam, ...updates }
+      : state.currentExam
+  })),
+
+  removeExam: (id) => set((state) => ({
+    exams: state.exams.filter(exam => exam.id !== id),
+    currentExam: state.currentExam?.id === id ? null : state.currentExam
+  })),
+
+  setLoading: (loading) => set({ isLoading: loading }),
+
+  setError: (error) => set({ error }),
+
+  reset: () => set({
+    currentExam: null,
+    exams: [],
+    isLoading: false,
+    error: null
+  }),
+
+  // Computed properties
+  getExamById: (id) => {
+    const { exams } = get();
+    return exams.find(exam => exam.id === id);
+  },
+
+  getPublishedExams: () => {
+    const { exams } = get();
+    return exams.filter(exam => exam.status === 'PUBLISHED');
+  },
+
+  getDraftExams: () => {
+    const { exams } = get();
+    return exams.filter(exam => exam.status === 'DRAFT');
+  },
+
+  getActiveExams: () => {
+    const { exams } = get();
+    return exams.filter(exam => exam.status === 'ONGOING' || exam.status === 'PUBLISHED');
+  }
+}));

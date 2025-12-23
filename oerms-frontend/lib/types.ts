@@ -579,3 +579,36 @@ export interface PageAttemptSummary {
   last: boolean;
   empty: boolean;
 }
+
+export interface AttemptResultDetailDTO {
+  questionId: string;
+  questionText: string;
+  questionType: QuestionType;
+  options?: string[];
+  correctAnswer?: string;
+  studentSelectedOptions?: string[];
+  studentAnswerText?: string;
+  isCorrect?: boolean;
+  marksAllocated: number;
+  marksObtained?: number;
+  timeSpentSeconds?: number;
+}
+
+export interface AttemptResultResponse {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  studentId: string;
+  studentName?: string;
+  status: AttemptStatus;
+  totalMarks: number;
+  obtainedMarks?: number;
+  percentage?: number;
+  passed?: boolean;
+  grade?: string;
+  resultStatus?: ResultStatus;
+  publishedAt?: string;
+  submittedAt?: string;
+  timeTakenSeconds?: number;
+  details: AttemptResultDetailDTO[];
+}

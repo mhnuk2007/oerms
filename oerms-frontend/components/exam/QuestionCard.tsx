@@ -82,7 +82,7 @@ export function QuestionCard({
                                     ? handleMultiSelect(option.id)
                                     : handleSingleSelect(option.id)
                             }
-                            className={`w-full flex items-center gap-3 p-4 rounded-lg border-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+                            className={`w-full flex items-center gap-3 p-4 rounded-lg border-2 text-left transition-all
                 ${isSelected
                                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
                                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'
@@ -93,7 +93,7 @@ export function QuestionCard({
                                 className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
                   ${isSelected
                                         ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                                     }
                 `}
                             >

@@ -569,40 +569,6 @@
         }
       }
     },
-    "/api/attempts/exam/{examId}/statistics": {
-      "get": {
-        "tags": [
-          "Attempt Management"
-        ],
-        "summary": "Get exam attempt statistics",
-        "description": "Retrieves statistics for all attempts of an exam",
-        "operationId": "getExamAttemptStatistics",
-        "parameters": [
-          {
-            "name": "examId",
-            "in": "path",
-            "description": "Exam ID",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseExamAttemptStatistics"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/attempts/exam/{examId}/count": {
       "get": {
         "tags": [
@@ -941,12 +907,51 @@
           }
         }
       },
+      "QuestionInfo": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "marks": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "StartAttemptRequest": {
         "type": "object",
         "properties": {
           "examId": {
             "type": "string",
             "format": "uuid"
+          },
+          "examTitle": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "ipAddress": {
+            "type": "string"
+          },
+          "userAgent": {
+            "type": "string"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionInfo"
+            }
           }
         },
         "required": [
@@ -1057,13 +1062,13 @@
       "PageAttemptSummary": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -1110,19 +1115,19 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
+          "unpaged": {
+            "type": "boolean"
           },
-          "pageSize": {
+          "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
           "paged": {
             "type": "boolean"
           },
-          "unpaged": {
-            "type": "boolean"
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -1180,79 +1185,6 @@
           },
           "path": {
             "type": "string"
-          }
-        }
-      },
-      "ApiResponseExamAttemptStatistics": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/ExamAttemptStatistics"
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "path": {
-            "type": "string"
-          }
-        }
-      },
-      "ExamAttemptStatistics": {
-        "type": "object",
-        "properties": {
-          "examId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "examTitle": {
-            "type": "string"
-          },
-          "totalAttempts": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "completedAttempts": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "inProgressAttempts": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "autoSubmittedAttempts": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "averageScore": {
-            "type": "number",
-            "format": "double"
-          },
-          "highestScore": {
-            "type": "number",
-            "format": "double"
-          },
-          "lowestScore": {
-            "type": "number",
-            "format": "double"
-          },
-          "averageTimeSpentMinutes": {
-            "type": "number",
-            "format": "double"
-          },
-          "passedCount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "failedCount": {
-            "type": "integer",
-            "format": "int64"
           }
         }
       }

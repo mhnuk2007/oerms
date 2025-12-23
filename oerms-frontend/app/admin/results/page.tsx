@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { apiClient } from '@/lib/api';
-import { ResultSummaryDTO, ExamDTO } from '@/lib/types';
+import { ResultSummaryDTO, ResultDTO } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -14,29 +14,32 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 export default function AdminResultsPage() {
     const router = useRouter();
     const { hasRole, user } = useAuth();
-    const [exams, setExams] = useState<ExamDTO[]>([]);
-    const [selectedExamId, setSelectedExamId] = useState<string>('');
     const [results, setResults] = useState<ResultSummaryDTO[]>([]);
     const [loading, setLoading] = useState(true);
-    const [loadingResults, setLoadingResults] = useState(false);
     const [error, setError] = useState<string>('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
     const [pendingResults, setPendingResults] = useState<ResultSummaryDTO[]>([]);
     const [suspiciousResults, setSuspiciousResults] = useState<ResultSummaryDTO[]>([]);
+    const loadingPagesRef = useRef<Set<number>>(new Set());
 
     const isAdmin = hasRole('ADMIN');
     const isTeacher = hasRole('TEACHER');
     const hasAccess = isAdmin || isTeacher;
 
     useEffect(() => {
-        const loadInitialData = async () => {
+        // Prevent duplicate requests for the same page
+        if (loadingPagesRef.current.has(page)) {
+            return;
+        }
+
+        const loadResults = async () => {
+            loadingPagesRef.current.add(page);
+
             try {
                 setLoading(true);
                 setError('');
-
-                // Load published exams for selection
-                const examsResponse = await apiClient.getPublishedExams({ page: 0, size: 100 });
-                const examsData = examsResponse.data || examsResponse;
-                setExams(examsData.content || []);
 
                 // Load pending grading results
                 const pendingResponse = await apiClient.getPendingGradingResults();
@@ -48,42 +51,27 @@ export default function AdminResultsPage() {
                 const suspiciousData = suspiciousResponse.data || suspiciousResponse || [];
                 setSuspiciousResults(suspiciousData);
 
+                // Load all results with pagination
+                const resultsResponse = await apiClient.getExamResults('', { page, size: 10 });
+                const paginationData = resultsResponse.data || resultsResponse;
+                const resultList = paginationData.content || [];
+                setResults(prev => page === 0 ? resultList : [...prev, ...resultList]);
+                setHasMore(paginationData.totalPages > page + 1);
             } catch (err: any) {
-                setError(err.message || 'Failed to load data');
-                console.error('Failed to load data:', err);
+                setError(err.message || 'Failed to load results');
+                console.error('Failed to load results:', err);
             } finally {
                 setLoading(false);
+                loadingPagesRef.current.delete(page);
             }
         };
 
-        loadInitialData();
-    }, []);
+        loadResults();
+    }, [page]);
 
-    useEffect(() => {
-        if (selectedExamId) {
-            loadExamResults(selectedExamId);
-        } else {
-            setResults([]);
-        }
-    }, [selectedExamId]);
-
-    const loadExamResults = async (examId: string) => {
-        try {
-            setLoadingResults(true);
-            setError('');
-
-            const resultsResponse = await apiClient.getExamResultsAdmin(examId, { page: 0, size: 50 });
-            const resultsData = resultsResponse.data || resultsResponse;
-            setResults(resultsData.content || []);
-        } catch (err: any) {
-            setError(`Failed to load results for selected exam: ${err.message}`);
-            console.error('Failed to load exam results:', err);
-        } finally {
-            setLoadingResults(false);
-        }
+    const loadMore = () => {
+        setPage(prev => prev + 1);
     };
-
-
 
     const handlePublishResult = async (resultId: string) => {
         try {
@@ -166,7 +154,7 @@ export default function AdminResultsPage() {
         );
     }
 
-    if (loading) {
+    if (loading && page === 0) {
         return (
             <DashboardLayout>
                 <div className="flex justify-center py-12">
@@ -293,160 +281,138 @@ export default function AdminResultsPage() {
                 </div>
             )}
 
-            {/* Exam Results Viewer */}
+            {/* All Results Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Exam Results</CardTitle>
-                    <div className="flex items-center gap-4">
-                        <div className="flex-1 max-w-md">
-                            <select
-                                value={selectedExamId}
-                                onChange={(e) => setSelectedExamId(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option value="">Select an exam to view results</option>
-                                {exams.map((exam) => (
-                                    <option key={exam.id} value={exam.id}>
-                                        {exam.title}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        {selectedExamId && (
-                            <Button
-                                onClick={() => handleCalculateRankings(selectedExamId)}
-                                variant="outline"
-                                size="sm"
-                            >
-                                Calculate Rankings
-                            </Button>
-                        )}
-                    </div>
+                    <CardTitle>All Results</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {loadingResults ? (
-                        <div className="flex justify-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        </div>
-                    ) : selectedExamId ? (
-                        results.length > 0 ? (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 font-medium">
-                                        <tr>
-                                            <th className="px-6 py-4">Exam</th>
-                                            <th className="px-6 py-4">Score</th>
-                                            <th className="px-6 py-4">Grade</th>
-                                            <th className="px-6 py-4">Status</th>
-                                            <th className="px-6 py-4">Result</th>
-                                            <th className="px-6 py-4">Published</th>
-                                            <th className="px-6 py-4 text-right">Actions</th>
+                    <div className="mb-4">
+                        <Input
+                            type="text"
+                            placeholder="Search by exam or student..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="max-w-md"
+                        />
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 font-medium">
+                                <tr>
+                                    <th className="px-6 py-4">Exam</th>
+                                    <th className="px-6 py-4">Score</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">Published</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                {results
+                                    .filter(result =>
+                                        searchTerm === '' ||
+                                        result.examTitle.toLowerCase().includes(searchTerm.toLowerCase())
+                                    )
+                                    .map((result) => (
+                                        <tr key={result.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="font-medium text-gray-900 dark:text-white">
+                                                    {result.examTitle}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="font-medium">
+                                                    {result.obtainedMarks}/{result.totalMarks} ({result.percentage}%)
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                                    result.status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
+                                                    result.status === 'PENDING_GRADING' ? 'bg-orange-100 text-orange-800' :
+                                                    result.status === 'GRADED' ? 'bg-blue-100 text-blue-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {result.status.replace('_', ' ')}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                                                {result.publishedAt ? new Date(result.publishedAt).toLocaleDateString() : 'Not published'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex gap-2 justify-end">
+                                                    <Link href={`/results/${result.id}`}>
+                                                        <Button variant="ghost" size="sm">View</Button>
+                                                    </Link>
+
+                                                    {result.status === 'GRADED' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-green-700 hover:text-green-800"
+                                                            onClick={() => handlePublishResult(result.id)}
+                                                        >
+                                                            Publish
+                                                        </Button>
+                                                    )}
+
+                                                    {result.status === 'PUBLISHED' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-orange-700 hover:text-orange-800"
+                                                            onClick={() => handleUnpublishResult(result.id)}
+                                                        >
+                                                            Unpublish
+                                                        </Button>
+                                                    )}
+
+                                                    {/* Grade button - available for both teachers and admins */}
+                                                    {result.status === 'PENDING_GRADING' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-blue-700 hover:text-blue-800"
+                                                            onClick={() => handleGradeResult(result.id)}
+                                                        >
+                                                            Grade
+                                                        </Button>
+                                                    )}
+
+                                                    {/* Delete button - only for admins */}
+                                                    {isAdmin && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-red-600 hover:text-red-700"
+                                                            onClick={() => handleDeleteResult(result.id)}
+                                                        >
+                                                            Delete
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                        {results.map((result) => (
-                                            <tr key={result.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="font-medium text-gray-900 dark:text-white">
-                                                        {result.examTitle}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="font-medium">
-                                                        {result.obtainedMarks}/{result.totalMarks} ({result.percentage}%)
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="font-medium text-gray-900 dark:text-white">
-                                                        {result.grade || 'N/A'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                        result.status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
-                                                        result.status === 'PENDING_GRADING' ? 'bg-orange-100 text-orange-800' :
-                                                        result.status === 'GRADED' ? 'bg-blue-100 text-blue-800' :
-                                                        'bg-gray-100 text-gray-800'
-                                                    }`}>
-                                                        {result.status?.replace('_', ' ') || 'Unknown'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                        result.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                    }`}>
-                                                        {result.passed ? 'Passed' : 'Failed'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                                                    {result.publishedAt ? new Date(result.publishedAt).toLocaleDateString() : 'Not published'}
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Link href={`/results/${result.id}`}>
-                                                            <Button variant="ghost" size="sm">View</Button>
-                                                        </Link>
+                                    ))}
+                            </tbody>
+                        </table>
+                    </div>
 
-                                                        {result.status === 'GRADED' && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="text-green-700 hover:text-green-800"
-                                                                onClick={() => handlePublishResult(result.id)}
-                                                            >
-                                                                Publish
-                                                            </Button>
-                                                        )}
-
-                                                        {result.status === 'PUBLISHED' && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="text-orange-700 hover:text-orange-800"
-                                                                onClick={() => handleUnpublishResult(result.id)}
-                                                            >
-                                                                Unpublish
-                                                            </Button>
-                                                        )}
-
-                                                        {/* Grade button - available for both teachers and admins */}
-                                                        {result.status === 'PENDING_GRADING' && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="text-blue-700 hover:text-blue-800"
-                                                                onClick={() => handleGradeResult(result.id)}
-                                                            >
-                                                                Grade
-                                                            </Button>
-                                                        )}
-
-                                                        {/* Delete button - only for admins */}
-                                                        {isAdmin && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="text-red-600 hover:text-red-700"
-                                                                onClick={() => handleDeleteResult(result.id)}
-                                                            >
-                                                                Delete
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="text-center py-12">
-                                <p className="text-gray-500">No results found for the selected exam.</p>
-                            </div>
-                        )
-                    ) : (
+                    {results.length === 0 && (
                         <div className="text-center py-12">
-                            <p className="text-gray-500">Select an exam from the dropdown above to view its results.</p>
+                            <p className="text-gray-500">No results found.</p>
+                        </div>
+                    )}
+
+                    {hasMore && (
+                        <div className="mt-8 text-center">
+                            <Button
+                                onClick={loadMore}
+                                disabled={loading}
+                                className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                            >
+                                {loading ? 'Loading...' : 'Load More'}
+                            </Button>
                         </div>
                     )}
                 </CardContent>

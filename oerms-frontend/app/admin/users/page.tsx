@@ -405,7 +405,7 @@ export default function AdminUsersPage() {
                                                 onClick={async () => {
                                                     if (confirm(`Are you sure you want to delete user ${user.userName}? This action cannot be undone.`)) {
                                                         try {
-                                                            await apiClient.deleteUser(user.id);
+                                                            await apiClient.deleteUserById(user.id);
                                                             setUsers(prev => prev.filter(u => u.id !== user.id));
                                                             setUserProfiles(prev => {
                                                                 const updated = { ...prev };

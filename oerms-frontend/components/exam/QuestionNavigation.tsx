@@ -31,7 +31,7 @@ export function QuestionNavigation({
         if (question.isAnswered) {
             return 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700';
         }
-        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600';
     };
 
     const answeredCount = questions.filter((q) => q.isAnswered).length;
@@ -47,14 +47,14 @@ export function QuestionNavigation({
             <div className="flex gap-4 mb-4 text-xs">
                 <div className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                    <span className="text-gray-700 dark:text-gray-300">
+                    <span className="text-gray-600 dark:text-gray-300">
                         Answered: {answeredCount}/{questions.length}
                     </span>
                 </div>
                 {flaggedCount > 0 && (
                     <div className="flex items-center gap-1.5">
                         <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-                        <span className="text-gray-700 dark:text-gray-300">
+                        <span className="text-gray-600 dark:text-gray-300">
                             Flagged: {flaggedCount}
                         </span>
                     </div>
@@ -80,7 +80,7 @@ export function QuestionNavigation({
 
             {/* Legend */}
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
+                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-300">
                     <div className="flex items-center gap-2">
                         <span className="w-4 h-4 rounded bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"></span>
                         Not Answered

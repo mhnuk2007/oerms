@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
+import { examService } from '@/lib/api/exam';
 import { ExamDTO } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -32,34 +33,18 @@ export default function ExamsPage() {
 
                 if (isTeacher || isAdmin) {
                     // Teachers and admins see all exams
-                    const response = await apiClient.getAllExams({ page, size: 10 });
+                    const response = await examService.getAllExams(page, 10);
 
                     // Handle different response structures
-                    if (response && response.data && Array.isArray(response.data.content)) {
-                        examsData = response.data.content;
-                        totalPages = response.data.totalPages;
-                    } else if (response && Array.isArray(response.content)) {
-                        examsData = response.content;
-                        totalPages = response.totalPages;
-                    } else if (response && Array.isArray(response)) {
-                        examsData = response;
-                        totalPages = 1;
-                    }
+                    examsData = response.content || [];
+                    totalPages = response.totalPages || 1;
                 } else {
                     // Students see only published exams
-                    const response = await apiClient.getPublishedExams({ page, size: 10 });
+                    const response = await examService.getPublishedExams(page, 10);
 
                     // Handle different response structures
-                    if (response && response.data && Array.isArray(response.data.content)) {
-                        examsData = response.data.content;
-                        totalPages = response.data.totalPages;
-                    } else if (response && Array.isArray(response.content)) {
-                        examsData = response.content;
-                        totalPages = response.totalPages;
-                    } else if (response && Array.isArray(response)) {
-                        examsData = response;
-                        totalPages = 1;
-                    }
+                    examsData = response.content || [];
+                    totalPages = response.totalPages || 1;
                 }
 
                 setExams(prev => page === 0 ? examsData : [...prev, ...examsData]);

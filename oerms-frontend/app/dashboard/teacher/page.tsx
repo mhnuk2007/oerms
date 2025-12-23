@@ -263,32 +263,32 @@ export default function TeacherDashboard() {
                                                         {exam.status}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                                                <p className="text-sm text-gray-500 mt-1">
                                                     {exam.duration} mins • {exam.totalMarks} marks • Created {new Date(exam.createdAt).toLocaleDateString()}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2 ml-4">
-                                                    <Link
+                                                <Link
                                                     href={`/exams/${exam.id}/edit`}
-                                                    className="p-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                                                     title="Edit Exam"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                     </svg>
                                                 </Link>
-                                                    <Link
+                                                <Link
                                                     href={`/exams/${exam.id}/attempts`}
-                                                    className="p-2 text-gray-700 dark:text-gray-300 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                                                    className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
                                                     title="View Attempts"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                                                     </svg>
                                                 </Link>
-                                                    <Link
+                                                <Link
                                                     href={`/exams/${exam.id}/statistics`}
-                                                    className="p-2 text-gray-700 dark:text-gray-300 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                                                    className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
                                                     title="Statistics"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -305,12 +305,12 @@ export default function TeacherDashboard() {
                             ) : (
                                 <div className="text-center py-12">
                                     <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <svg className="w-8 h-8 text-gray-500 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                         </svg>
                                     </div>
                                     <h3 className="font-medium text-gray-900 dark:text-white mb-1">No exams yet</h3>
-                                                <p className="text-gray-700 dark:text-gray-300 text-sm mb-4">Create your first exam to get started</p>
+                                    <p className="text-gray-500 text-sm mb-4">Create your first exam to get started</p>
                                     <Link href="/exams/create">
                                         <Button>Create Your First Exam</Button>
                                     </Link>
@@ -338,14 +338,14 @@ export default function TeacherDashboard() {
                                     <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-200 dark:border-amber-800">
                                         <div>
                                             <p className="font-medium text-sm text-gray-900 dark:text-white">Math Quiz - John Doe</p>
-                                            <p className="text-xs text-gray-700 dark:text-gray-300">Submitted 2 hours ago</p>
+                                            <p className="text-xs text-gray-500">Submitted 2 hours ago</p>
                                         </div>
                                         <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">Needs Grading</span>
                                     </div>
                                     <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-200 dark:border-amber-800">
                                         <div>
                                             <p className="font-medium text-sm text-gray-900 dark:text-white">Physics Test - Jane Smith</p>
-                                            <p className="text-xs text-gray-700 dark:text-gray-300">Submitted 1 day ago</p>
+                                            <p className="text-xs text-gray-500">Submitted 1 day ago</p>
                                         </div>
                                         <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">Needs Grading</span>
                                     </div>
@@ -379,7 +379,7 @@ export default function TeacherDashboard() {
                                                         <p className="font-medium text-gray-900 dark:text-white text-sm">
                                                             {attempt.studentName || 'Student'}
                                                         </p>
-                                                        <p className="text-xs text-gray-700 dark:text-gray-300">{attempt.examTitle}</p>
+                                                        <p className="text-xs text-gray-500">{attempt.examTitle}</p>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
@@ -400,7 +400,7 @@ export default function TeacherDashboard() {
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-center text-gray-700 dark:text-gray-300 py-8">No recent student activity</p>
+                                    <p className="text-center text-gray-500 py-8">No recent student activity</p>
                                 )}
                             </CardContent>
                         </Card>
@@ -420,14 +420,14 @@ export default function TeacherDashboard() {
                                     href="/exams/create"
                                     className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-all"
                                 >
-                                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                         </svg>
                                     </div>
                                     <div>
                                         <span className="font-medium text-gray-900 dark:text-white">Create Exam</span>
-                                        <p className="text-xs text-gray-700 dark:text-gray-300">Start a new assessment</p>
+                                        <p className="text-xs text-gray-500">Start a new assessment</p>
                                     </div>
                                 </Link>
 
@@ -442,7 +442,7 @@ export default function TeacherDashboard() {
                                     </div>
                                     <div>
                                         <span className="font-medium text-gray-900 dark:text-white">Add Question</span>
-                                        <p className="text-xs text-gray-700 dark:text-gray-300">Build question bank</p>
+                                        <p className="text-xs text-gray-500">Build question bank</p>
                                     </div>
                                 </Link>
 
@@ -457,7 +457,7 @@ export default function TeacherDashboard() {
                                     </div>
                                     <div>
                                         <span className="font-medium text-gray-900 dark:text-white">Question Bank</span>
-                                        <p className="text-xs text-gray-700 dark:text-gray-300">View all questions</p>
+                                        <p className="text-xs text-gray-500">View all questions</p>
                                     </div>
                                 </Link>
 
@@ -472,7 +472,7 @@ export default function TeacherDashboard() {
                                     </div>
                                     <div>
                                         <span className="font-medium text-gray-900 dark:text-white">My Profile</span>
-                                        <p className="text-xs text-gray-700 dark:text-gray-300">View & edit profile</p>
+                                        <p className="text-xs text-gray-500">View & edit profile</p>
                                     </div>
                                 </Link>
                             </div>
@@ -488,7 +488,7 @@ export default function TeacherDashboard() {
                             <div className="space-y-4">
                                 <div>
                                     <div className="flex justify-between text-sm mb-1">
-                                        <span className="text-gray-700 dark:text-gray-400">Average Score</span>
+                                        <span className="text-gray-600 dark:text-gray-400">Average Score</span>
                                         <span className="font-semibold text-gray-900 dark:text-white">{stats.averageScore}%</span>
                                     </div>
                                     <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -500,7 +500,7 @@ export default function TeacherDashboard() {
                                 </div>
                                 <div>
                                     <div className="flex justify-between text-sm mb-1">
-                                        <span className="text-gray-700 dark:text-gray-400">Pass Rate</span>
+                                        <span className="text-gray-600 dark:text-gray-400">Pass Rate</span>
                                         <span className="font-semibold text-gray-900 dark:text-white">{stats.passRate}%</span>
                                     </div>
                                     <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -525,7 +525,7 @@ export default function TeacherDashboard() {
                                     </svg>
                                 </div>
                                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Pro Tip</h3>
-                                <p className="text-sm text-gray-700 dark:text-gray-400">
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
                                     Use the question bank to reuse questions across multiple exams. It saves time and ensures consistency!
                                 </p>
                             </div>

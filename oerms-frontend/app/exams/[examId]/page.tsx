@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { attemptService } from '@/lib/api/attempt';
 import { examService } from '@/lib/api/exam';
-import { ExamDTO, AttemptDTO } from '@/lib/types';
+import { ExamDTO, AttemptResponse } from '@/lib/types';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -37,7 +37,7 @@ export default function StudentExamDetailsPage() {
   const router = useRouter();
   const examId = params.examId as string;
   const [exam, setExam] = useState<ExamDTO | null>(null);
-  const [existingAttempt, setExistingAttempt] = useState<AttemptDTO | null>(null);
+  const [existingAttempt, setExistingAttempt] = useState<AttemptResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const { user } = useAuth();
@@ -56,7 +56,7 @@ export default function StudentExamDetailsPage() {
         try {
           const attemptsResponse = await attemptService.getMyExamAttempts(examId, 0, 10);
           const attemptsPayload = (attemptsResponse as any)?.data || attemptsResponse;
-          const attempts: AttemptDTO[] = attemptsPayload?.content || attemptsPayload || [];
+          const attempts: AttemptResponse[] = attemptsPayload?.content || attemptsPayload || [];
 
           const inProgressAttempt = attempts.find(a => a.status === 'IN_PROGRESS');
           if (inProgressAttempt) setExistingAttempt(inProgressAttempt);
@@ -95,7 +95,7 @@ export default function StudentExamDetailsPage() {
     setStarting(true);
     try {
       const payload = await examService.startExam(examId);
-      const attempt: AttemptDTO = (payload as any)?.attempt || payload;
+      const attempt: AttemptResponse = (payload as any)?.attempt || payload;
 
       if (!attempt?.id) throw new Error('Invalid startExam response: missing attempt id');
 
@@ -233,7 +233,7 @@ export default function StudentExamDetailsPage() {
                 <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-lg">
                   <p className="text-sm text-amber-800 dark:text-amber-200">
                     <strong>You have an ongoing attempt for this exam.</strong><br />
-                    Started: {formatDate(existingAttempt.startedAt || existingAttempt.startTime)}
+                    Started: {formatDate(existingAttempt.startedAt)}
                   </p>
                 </div>
                 <Link href={`/atm/${existingAttempt.id}`}>

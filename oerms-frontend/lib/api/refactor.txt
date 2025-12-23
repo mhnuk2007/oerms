@@ -1,0 +1,1197 @@
+OERMS Frontend Enterprise Refactoring Guide
+Project Overview
+OERMS (Online Examination & Result Management System) - Next.js 15+ App Router application with TypeScript, Tailwind CSS, and Spring Boot microservices backend (7 services via API Gateway).
+
+🎯 Core Refactoring Objectives
+1. Enterprise-Grade Architecture
+
+Implement layered architecture (presentation, business logic, data access)
+Centralized state management with React Context + Zustand for complex state
+Service abstraction layer for all API integrations
+Comprehensive error boundaries and fallback UI
+Type-safe API client with full OpenAPI spec integration
+
+2. Production-Ready Performance
+
+Code splitting per route with dynamic imports
+Image optimization with Next.js Image component
+Implement React Server Components where applicable
+Memoization strategies (useMemo, useCallback, React.memo)
+Lazy loading for heavy components (charts, rich text editors)
+Bundle size optimization (<200KB initial load)
+
+3. Modern UI/UX Standards
+
+Design system with shadcn/ui + Radix UI primitives
+Responsive layouts (mobile-first approach)
+Dark mode with system preference detection
+Micro-interactions and smooth transitions
+Accessibility compliance (WCAG 2.1 AA)
+Empty states, error states, loading states for all views
+
+4. Developer Experience
+
+Comprehensive TypeScript coverage (strict mode)
+ESLint + Prettier configuration
+Husky pre-commit hooks (type-check, lint, format)
+Storybook for component development
+Unit tests (Vitest) + E2E tests (Playwright)
+API mocking with MSW (Mock Service Worker)
+
+
+📁 Recommended Project Structure
+src/
+├── app/                          # Next.js App Router
+│   ├── (auth)/                   # Auth layout group
+│   │   ├── login/
+│   │   └── register/
+│   ├── (dashboard)/              # Dashboard layout group
+│   │   ├── admin/
+│   │   ├── teacher/
+│   │   └── student/
+│   ├── exam/
+│   │   └── [attemptId]/         # Exam taking interface
+│   ├── api/                      # API routes (if needed)
+│   └── layout.tsx
+│
+├── components/
+│   ├── ui/                       # shadcn/ui base components
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   ├── dialog.tsx
+│   │   ├── skeleton.tsx
+│   │   └── ...
+│   ├── exam/                     # Exam-specific components
+│   │   ├── question-palette.tsx
+│   │   ├── question-display.tsx
+│   │   ├── timer.tsx
+│   │   └── submit-modal.tsx
+│   ├── dashboard/                # Dashboard components
+│   │   ├── stat-card.tsx
+│   │   ├── recent-activity.tsx
+│   │   └── ...
+│   ├── admin/                    # Admin components
+│   │   ├── data-table.tsx
+│   │   ├── user-management/
+│   │   └── ...
+│   └── shared/                   # Shared components
+│       ├── header.tsx
+│       ├── sidebar.tsx
+│       ├── error-boundary.tsx
+│       └── ...
+│
+├── lib/
+│   ├── api/                      # API layer
+│   │   ├── client.ts             # Base API client
+│   │   ├── errors.ts             # Error handling
+│   │   ├── services/             # Service-specific APIs
+│   │   │   ├── auth.service.ts
+│   │   │   ├── exam.service.ts
+│   │   │   ├── attempt.service.ts
+│   │   │   ├── question.service.ts
+│   │   │   ├── result.service.ts
+│   │   │   └── user.service.ts
+│   │   └── types/                # API types (generated from OpenAPI)
+│   │       ├── auth.types.ts
+│   │       ├── exam.types.ts
+│   │       └── ...
+│   ├── hooks/                    # Custom React hooks
+│   │   ├── use-auth.ts
+│   │   ├── use-exam-persistence.ts
+│   │   ├── use-toast.ts
+│   │   ├── use-keyboard-shortcuts.ts
+│   │   └── ...
+│   ├── store/                    # Zustand stores
+│   │   ├── auth.store.ts
+│   │   ├── exam.store.ts
+│   │   └── ui.store.ts
+│   ├── utils/                    # Utility functions
+│   │   ├── cn.ts                 # classname utility
+│   │   ├── format.ts             # Date, number formatting
+│   │   ├── validation.ts         # Form validations
+│   │   └── ...
+│   └── constants/
+│       ├── routes.ts
+│       ├── exam-config.ts
+│       └── ...
+│
+├── types/                        # Global TypeScript types
+│   ├── index.d.ts
+│   └── ...
+│
+└── config/
+    ├── site.ts                   # Site configuration
+    └── api.ts                    # API configuration
+
+🔧 Priority 1: Type-Safe API Integration
+Step 1: Generate TypeScript Types from OpenAPI Specs
+bash# Install openapi-typescript
+npm install -D openapi-typescript
+
+# Generate types for all services
+npx openapi-typescript ./docs/auth-server.json -o ./src/lib/api/types/auth.types.ts
+npx openapi-typescript ./docs/exam-service.json -o ./src/lib/api/types/exam.types.ts
+npx openapi-typescript ./docs/attempt-service.json -o ./src/lib/api/types/attempt.types.ts
+npx openapi-typescript ./docs/question-service.json -o ./src/lib/api/types/question.types.ts
+npx openapi-typescript ./docs/result-service.json -o ./src/lib/api/types/result.types.ts
+npx openapi-typescript ./docs/user-service.json -o ./src/lib/api/types/user.types.ts
+Step 2: Enhanced API Client with Interceptors
+typescript// lib/api/client.ts
+import { ApiError } from './errors';
+
+interface RequestConfig extends RequestInit {
+  skipAuth?: boolean;
+  retries?: number;
+}
+
+class APIClient {
+  private baseURL: string;
+  private refreshPromise: Promise<string> | null = null;
+
+  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080') {
+    this.baseURL = baseURL;
+  }
+
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const token = localStorage.getItem('access_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  private async refreshAccessToken(): Promise<string> {
+    if (this.refreshPromise) return this.refreshPromise;
+
+    this.refreshPromise = (async () => {
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) throw new Error('No refresh token');
+
+        const response = await fetch(`${this.baseURL}/oauth2/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: process.env.NEXT_PUBLIC_OAUTH_CLIENT_ID!,
+          }),
+        });
+
+        if (!response.ok) throw new Error('Token refresh failed');
+
+        const data = await response.json();
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('refresh_token', data.refresh_token);
+        
+        return data.access_token;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  async request<T>(
+    endpoint: string,
+    config: RequestConfig = {}
+  ): Promise<T> {
+    const { skipAuth, retries = 1, ...fetchConfig } = config;
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(fetchConfig.headers as Record<string, string>),
+      };
+
+      if (!skipAuth) {
+        const authHeaders = await this.getAuthHeaders();
+        Object.assign(headers, authHeaders);
+      }
+
+      let response = await fetch(`${this.baseURL}${endpoint}`, {
+        ...fetchConfig,
+        headers,
+      });
+
+      // Handle token refresh on 401
+      if (response.status === 401 && !skipAuth && retries > 0) {
+        try {
+          await this.refreshAccessToken();
+          const newAuthHeaders = await this.getAuthHeaders();
+          
+          response = await fetch(`${this.baseURL}${endpoint}`, {
+            ...fetchConfig,
+            headers: { ...headers, ...newAuthHeaders },
+          });
+        } catch (refreshError) {
+          // Refresh failed, redirect to login
+          if (typeof window !== 'undefined') {
+            localStorage.clear();
+            window.location.href = '/login?session_expired=true';
+          }
+          throw new ApiError('Session expired', 401);
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw ApiError.fromResponse(response, errorData);
+      }
+
+      // Handle empty responses (204 No Content)
+      if (response.status === 204) {
+        return undefined as T;
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      if (error instanceof TypeError) {
+        throw ApiError.fromNetworkError(error);
+      }
+      throw new ApiError('An unexpected error occurred', 0);
+    }
+  }
+
+  // Convenience methods
+  get<T>(endpoint: string, config?: RequestConfig) {
+    return this.request<T>(endpoint, { ...config, method: 'GET' });
+  }
+
+  post<T>(endpoint: string, data?: unknown, config?: RequestConfig) {
+    return this.request<T>(endpoint, {
+      ...config,
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  put<T>(endpoint: string, data?: unknown, config?: RequestConfig) {
+    return this.request<T>(endpoint, {
+      ...config,
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  delete<T>(endpoint: string, config?: RequestConfig) {
+    return this.request<T>(endpoint, { ...config, method: 'DELETE' });
+  }
+
+  patch<T>(endpoint: string, data?: unknown, config?: RequestConfig) {
+    return this.request<T>(endpoint, {
+      ...config,
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+}
+
+export const apiClient = new APIClient();
+Step 3: Enhanced Error Handling
+typescript// lib/api/errors.ts
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public code?: string,
+    public details?: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+
+  static fromResponse(response: Response, data?: any): ApiError {
+    const message = data?.message || data?.error || `HTTP ${response.status}: ${response.statusText}`;
+    return new ApiError(message, response.status, data?.code, data?.details);
+  }
+
+  static fromNetworkError(error: Error): ApiError {
+    return new ApiError(
+      'Network request failed',
+      0,
+      'NETWORK_ERROR',
+      { originalError: error.message }
+    );
+  }
+
+  isNetworkError(): boolean {
+    return this.status === 0 || this.code === 'NETWORK_ERROR';
+  }
+
+  isAuthError(): boolean {
+    return this.status === 401 || this.status === 403;
+  }
+
+  isValidationError(): boolean {
+    return this.status === 400 && !!this.details?.fields;
+  }
+
+  isServerError(): boolean {
+    return this.status >= 500;
+  }
+
+  getFieldErrors(): Record<string, string> | null {
+    if (!this.isValidationError()) return null;
+    return (this.details?.fields as Record<string, string>) || null;
+  }
+
+  getUserMessage(): string {
+    if (this.isNetworkError()) {
+      return 'Cannot connect to server. Please check your internet connection.';
+    }
+    if (this.status === 401) {
+      return 'Your session has expired. Please log in again.';
+    }
+    if (this.status === 403) {
+      return 'You do not have permission to perform this action.';
+    }
+    if (this.status === 404) {
+      return 'The requested resource was not found.';
+    }
+    if (this.isValidationError()) {
+      const fields = this.getFieldErrors();
+      if (fields) {
+        const firstError = Object.values(fields)[0];
+        return firstError || 'Please check your input and try again.';
+      }
+    }
+    if (this.isServerError()) {
+      return 'Server error. Please try again later.';
+    }
+    return this.message || 'An unexpected error occurred.';
+  }
+
+  toJSON() {
+    return {
+      name: this.name,
+      message: this.message,
+      status: this.status,
+      code: this.code,
+      details: this.details,
+    };
+  }
+}
+Step 4: Service Layer Implementation
+typescript// lib/api/services/exam.service.ts
+import { apiClient } from '../client';
+import type { paths } from '../types/exam.types';
+
+type ExamListResponse = paths['/api/exams/published']['get']['responses']['200']['content']['*/*'];
+type ExamDetailResponse = paths['/api/exams/{id}']['get']['responses']['200']['content']['*/*'];
+type CreateExamRequest = paths['/api/exams']['post']['requestBody']['content']['application/json'];
+
+export class ExamService {
+  async getPublishedExams(params?: {
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDir?: string;
+  }): Promise<ExamListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.append(key, String(value));
+      });
+    }
+
+    return apiClient.get<ExamListResponse>(
+      `/api/exams/published?${searchParams.toString()}`
+    );
+  }
+
+  async getExamById(id: string): Promise<ExamDetailResponse> {
+    return apiClient.get<ExamDetailResponse>(`/api/exams/${id}`);
+  }
+
+  async createExam(data: CreateExamRequest): Promise<ExamDetailResponse> {
+    return apiClient.post<ExamDetailResponse>('/api/exams', data);
+  }
+
+  async publishExam(id: string): Promise<ExamDetailResponse> {
+    return apiClient.post<ExamDetailResponse>(`/api/exams/${id}/publish`);
+  }
+
+  async getMyExams(params?: {
+    page?: number;
+    size?: number;
+  }): Promise<ExamListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.append(key, String(value));
+      });
+    }
+
+    return apiClient.get<ExamListResponse>(
+      `/api/exams/my-exams?${searchParams.toString()}`
+    );
+  }
+}
+
+export const examService = new ExamService();
+typescript// lib/api/services/attempt.service.ts
+import { apiClient } from '../client';
+import type { paths } from '../types/attempt.types';
+
+type StartAttemptRequest = paths['/api/attempts/start']['post']['requestBody']['content']['application/json'];
+type AttemptResponse = paths['/api/attempts/{attemptId}']['get']['responses']['200']['content']['*/*'];
+type SaveAnswerRequest = paths['/api/attempts/{attemptId}/answers']['post']['requestBody']['content']['application/json'];
+
+export class AttemptService {
+  async startAttempt(examId: string): Promise<AttemptResponse> {
+    return apiClient.post<AttemptResponse>('/api/attempts/start', { examId });
+  }
+
+  async getAttempt(attemptId: string): Promise<AttemptResponse> {
+    return apiClient.get<AttemptResponse>(`/api/attempts/${attemptId}`);
+  }
+
+  async saveAnswer(attemptId: string, answer: SaveAnswerRequest): Promise<void> {
+    return apiClient.post(`/api/attempts/${attemptId}/answers`, answer);
+  }
+
+  async submitAttempt(attemptId: string): Promise<AttemptResponse> {
+    return apiClient.post<AttemptResponse>('/api/attempts/submit', { attemptId });
+  }
+
+  async recordTabSwitch(attemptId: string): Promise<void> {
+    return apiClient.post(`/api/attempts/${attemptId}/tab-switch`);
+  }
+
+  async recordWebcamViolation(attemptId: string): Promise<void> {
+    return apiClient.post(`/api/attempts/${attemptId}/webcam-violation`);
+  }
+
+  async getMyAttempts(params?: { page?: number; size?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.append(key, String(value));
+      });
+    }
+    return apiClient.get(`/api/attempts/my-attempts?${searchParams.toString()}`);
+  }
+}
+
+export const attemptService = new AttemptService();
+
+🎨 Priority 2: Design System & UI Components
+Step 1: Install shadcn/ui
+bashnpx shadcn-ui@latest init
+npx shadcn-ui@latest add button card dialog dropdown-menu input label select skeleton toast tabs
+Step 2: Custom Theme Configuration
+typescript// tailwind.config.ts
+import type { Config } from 'tailwindcss';
+
+const config: Config = {
+  darkMode: ['class'],
+  content: [
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        success: {
+          DEFAULT: 'hsl(142 76% 36%)',
+          foreground: 'hsl(0 0% 100%)',
+        },
+        warning: {
+          DEFAULT: 'hsl(38 92% 50%)',
+          foreground: 'hsl(0 0% 100%)',
+        },
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+      },
+      keyframes: {
+        'accordion-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
+        },
+        'accordion-up': {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
+        },
+        'slide-in-from-top': {
+          from: { transform: 'translateY(-100%)' },
+          to: { transform: 'translateY(0)' },
+        },
+        'slide-in-from-bottom': {
+          from: { transform: 'translateY(100%)' },
+          to: { transform: 'translateY(0)' },
+        },
+        'fade-in': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
+        'pulse-subtle': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.8' },
+        },
+      },
+      animation: {
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
+        'slide-in-top': 'slide-in-from-top 0.3s ease-out',
+        'slide-in-bottom': 'slide-in-from-bottom 0.3s ease-out',
+        'fade-in': 'fade-in 0.3s ease-out',
+        'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+    },
+  },
+  plugins: [require('tailwindcss-animate')],
+};
+
+export default config;
+Step 3: Enhanced DataTable Component
+typescript// components/admin/data-table.tsx
+'use client';
+
+import * as React from 'react';
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  SortingState,
+  ColumnFiltersState,
+  VisibilityState,
+  useReactTable,
+} from '@tanstack/react-table';
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Search,
+  X,
+} from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  searchable?: boolean;
+  searchKey?: string;
+  searchPlaceholder?: string;
+}
+
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  searchable = true,
+  searchKey,
+  searchPlaceholder = 'Search...',
+}: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = React.useState({});
+
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between">
+        {searchable && searchKey && (
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={searchPlaceholder}
+              value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
+              onChange={(event) =>
+                table.getColumn(searchKey)?.setFilterValue(event.target.value)
+              }
+              className="pl-10 pr-10"
+            />
+            {table.getColumn(searchKey)?.getFilterValue() && (
+              <button
+                onClick={() => table.getColumn(searchKey)?.setFilterValue('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-auto">
+              Columns <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {table
+              .getAllColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => {
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  >
+                    {column.id}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={
+                            header.column.getCanSort()
+                              ? 'flex items-center gap-2 cursor-pointer select-none'
+                              : ''
+                          }
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {header.column.getCanSort() && (
+                            <span className="text-muted-foreground">
+                              {{
+                                asc: <ChevronUp className="h-4 w-4" />,
+                                desc: <ChevronDown className="h-4 w-4" />,
+                              }[header.column.getIsSorted() as string] ?? (
+                                <ChevronsUpDown className="h-4 w-4" />
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between px-2">
+        <div className="flex-1 text-sm text-muted-foreground">
+          {table.getFilteredSelectedRowModel().rows.length} of{' '}
+          {table.getFilteredRowModel().rows.length} row(s) selected.
+        </div>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <select
+              value={table.getState().pagination.pageSize}
+              onChange={(e) => {
+                table.setPageSize(Number(e.target.value));
+              }}
+              className="h-8 w-[70px] rounded-md border border-input bg-transparent px-2 text-sm"
+            >
+              {[10, 20, 30, 40, 50].map((pageSize) => (
+                <option key={pageSize} value={pageSize}>
+                  {pageSize}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+            Page {table.getState().pagination.pageIndex + 1} of{' '}
+            {table.getPageCount()}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+🧪 Priority 3: Exam Interface Refactor
+Complete Exam Taking Flow
+typescript// app/exam/[attemptId]/page.tsx
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { attemptContinue4:14 pmService } from '@/lib/api/services/attempt.service';
+import { questionService } from '@/lib/api/services/question.service';
+import { ExamHeader } from '@/components/exam/exam-header';
+import { QuestionPalette } from '@/components/exam/question-palette';
+import { QuestionDisplay } from '@/components/exam/question-display';
+import { SubmitExamModal } from '@/components/exam/submit-modal';
+import { useExamPersistence } from '@/lib/hooks/use-exam-persistence';
+import { useKeyboardShortcuts } from '@/lib/hooks/use-keyboard-shortcuts';
+import { useToast } from '@/lib/hooks/use-toast';
+import { ApiError } from '@/lib/api/errors';
+import { ExamSkeleton } from '@/components/exam/exam-skeleton';
+export default function ExamPage() {
+const params = useParams();
+const router = useRouter();
+const { toast } = useToast();
+const attemptId = params.attemptId as string;
+const [loading, setLoading] = useState(true);
+const [attempt, setAttempt] = useState<any>(null);
+const [questions, setQuestions] = useState<any[]>([]);
+const [currentIndex, setCurrentIndex] = useState(0);
+const [answers, setAnswers] = useState<Record<string, any>>({});
+const [showSubmitModal, setShowSubmitModal] = useState(false);
+const [submitting, setSubmitting] = useState(false);
+// Persistence hook
+const { clearBackup, isLoaded, restoredState } = useExamPersistence(
+attemptId,
+answers,
+currentIndex
+);
+// Load exam data
+useEffect(() => {
+const loadExam = async () => {
+try {
+const [attemptData, questionsData] = await Promise.all([
+attemptService.getAttempt(attemptId),
+questionService.getExamQuestionsForStudent(attempt?.examId),
+]);
+    setAttempt(attemptData.data);
+    setQuestions(questionsData.data);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      toast({
+        title: 'Error',
+        description: error.getUserMessage(),
+        variant: 'destructive',
+      });
+    }
+    router.push('/dashboard/student');
+  } finally {
+    setLoading(false);
+  }
+};
+
+loadExam();
+}, [attemptId]);
+// Restore persisted state
+useEffect(() => {
+if (isLoaded && restoredState) {
+setAnswers(restoredState.answers);
+setCurrentIndex(restoredState.currentIndex);
+toast({
+title: 'Session restored',
+description: 'Your previous answers have been recovered.',
+});
+}
+}, [isLoaded, restoredState]);
+// Keyboard shortcuts
+useKeyboardShortcuts({
+onPrevious: () => setCurrentIndex((prev) => Math.max(0, prev - 1)),
+onNext: () => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1)),
+onFlag: () => handleFlag(),
+onSubmit: () => setShowSubmitModal(true),
+});
+const handleAnswerChange = useCallback(async (answer: any) => {
+setAnswers((prev) => ({
+...prev,
+[questions[currentIndex].id]: answer,
+}));
+// Auto-save to backend
+try {
+  await attemptService.saveAnswer(attemptId, {
+    questionId: questions[currentIndex].id,
+    ...answer,
+  });
+} catch (error) {
+  console.error('Failed to save answer:', error);
+}
+}, [currentIndex, questions, attemptId]);
+const handleFlag = useCallback(() => {
+const currentQuestion = questions[currentIndex];
+setAnswers((prev) => ({
+...prev,
+[currentQuestion.id]: {
+...prev[currentQuestion.id],
+flagged: !prev[currentQuestion.id]?.flagged,
+},
+}));
+}, [currentIndex, questions]);
+const handleSubmit = async () => {
+setSubmitting(true);
+try {
+await attemptService.submitAttempt(attemptId);
+clearBackup();
+toast({
+title: 'Success',
+description: 'Exam submitted successfully!',
+});
+router.push(/exam/${attemptId}/summary);
+} catch (error) {
+if (error instanceof ApiError) {
+toast({
+title: 'Error',
+description: error.getUserMessage(),
+variant: 'destructive',
+});
+}
+} finally {
+setSubmitting(false);
+setShowSubmitModal(false);
+}
+};
+if (loading || !isLoaded) {
+return <ExamSkeleton />;
+}
+const answeredCount = Object.values(answers).filter(
+(a) => a?.options?.length || a?.text?.trim()
+).length;
+return (
+<div className="flex h-screen overflow-hidden">
+{/* Sidebar */}
+<aside className="w-80 border-r bg-card">
+<ExamHeader
+examTitle={attempt.examTitle}
+remainingTime={attempt.remainingTimeSeconds}
+onSubmit={() => setShowSubmitModal(true)}
+/>
+<QuestionPalette
+       questions={questions}
+       currentIndex={currentIndex}
+       answers={answers}
+       onQuestionSelect={setCurrentIndex}
+     />
+</aside>
+  {/* Main content */}
+  <main className="flex-1 overflow-y-auto p-8">
+    <QuestionDisplay
+      question={questions[currentIndex]}
+      answer={answers[questions[currentIndex]?.id]}
+      questionNumber={currentIndex + 1}
+      totalQuestions={questions.length}
+      onAnswerChange={handleAnswerChange}
+      onFlag={handleFlag}
+      onPrevious={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+      onNext={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+    />
+  </main>
+
+  {/* Submit Modal */}
+  <SubmitExamModal
+    isOpen={showSubmitModal}
+    questionsAnswered={answeredCount}
+    totalQuestions={questions.length}
+    isSubmitting={submitting}
+    onConfirm={handleSubmit}
+    onCancel={() => setShowSubmitModal(false)}
+  />
+</div>
+);
+}
+
+### Question Palette Component
+```typescript
+// components/exam/question-palette.tsx
+'use client';
+
+import { cn } from '@/lib/utils';
+import { CheckCircle2, Circle, Flag } from 'lucide-react';
+
+interface QuestionPaletteProps {
+  questions: any[];
+  currentIndex: number;
+  answers: Record<string, any>;
+  onQuestionSelect: (index: number) => void;
+}
+
+export function QuestionPalette({
+  questions,
+  currentIndex,
+  answers,
+  onQuestionSelect,
+}: QuestionPaletteProps) {
+  return (
+    <div className="p-6 space-y-4">
+      <div>
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">
+          Question Navigation
+        </h3>
+        <div className="grid grid-cols-5 gap-2">
+          {questions.map((q, idx) => {
+            const answer = answers[q.id];
+            const isAnswered = answer?.options?.length || answer?.text?.trim();
+            const isFlagged = answer?.flagged;
+            const isCurrent = idx === currentIndex;
+
+            return (
+              <button
+                key={q.id}
+                onClick={() => onQuestionSelect(idx)}
+                aria-label={`Question ${idx + 1}${isAnswered ? ', answered' : ''}${isFlagged ? ', flagged' : ''}`}
+                aria-current={isCurrent}
+                className={cn(
+                  'relative aspect-square rounded-lg text-sm font-semibold transition-all',
+                  'hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  isCurrent && 'ring-2 ring-primary shadow-lg z-10',
+                  isFlagged && 'bg-amber-500 text-white hover:bg-amber-600',
+                  !isFlagged && isAnswered && 'bg-success text-white hover:bg-success/90',
+                  !isFlagged && !isAnswered && 'bg-muted text-muted-foreground hover:bg-muted/80'
+                )}
+              >
+                {idx + 1}
+                {isFlagged && (
+                  <Flag className="absolute -top-1 -right-1 h-3 w-3 fill-current" />
+                )}
+                {isAnswered && !isFlagged && (
+                  <CheckCircle2 className="absolute -bottom-0.5 -right-0.5 h-4 w-4" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="space-y-2 pt-4 border-t">
+        <div className="flex items-center gap-2 text-xs">
+          <div className="w-4 h-4 rounded bg-success" />
+          <span className="text-muted-foreground">Answered</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <div className="w-4 h-4 rounded bg-muted" />
+          <span className="text-muted-foreground">Not Answered</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <div className="w-4 h-4 rounded bg-amber-500" />
+          <span className="text-muted-foreground">Flagged</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <div className="w-4 h-4 rounded border-2 border-primary" />
+          <span className="text-muted-foreground">Current</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## 📊 Priority 4: State Management with Zustand
+```typescript
+// lib/store/auth.store.ts
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface User {
+  id: string;
+  userName: string;
+  email: string;
+  roles: string[];
+}
+
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  setUser: (user: User | null) => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      isAuthenticated: false,
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      logout: () => {
+        localStorage.clear();
+        set({ user: null, isAuthenticated: false });
+      },
+    }),
+    {
+      name: 'auth-storage',
+    }
+  )
+);
+```
+```typescript
+// lib/store/ui.store.ts
+import { create } from 'zustand';
+
+interface UIState {
+  sidebarOpen: boolean;
+  theme: 'light' | 'dark' | 'system';
+  setSidebarOpen: (open: boolean) => void;
+  toggleSidebar: () => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+}
+
+export const useUIStore = create<UIState>((set) => ({
+  sidebarOpen: true,
+  theme: 'system',
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  setTheme: (theme) => set({ theme }),
+}));
+```
+
+---
+
+## ✅ Implementation Checklist
+
+### Week 1: Foundation
+- [ ] Set up project structure (folders, imports)
+- [ ] Generate TypeScript types from OpenAPI specs
+- [ ] Implement enhanced API client with interceptors
+- [ ] Create service layer for all microservices
+- [ ] Set up Zustand stores (auth, UI)
+- [ ] Configure Tailwind + shadcn/ui
+
+### Week 2: Core Components
+- [ ] Build reusable UI components (DataTable, Skeleton, etc.)
+- [ ] Implement exam interface components
+- [ ] Add exam persistence hook
+- [ ] Create keyboard shortcuts hook
+- [ ] Build toast notification system
+- [ ] Implement error boundaries
+
+### Week 3: Features & Polish
+- [ ] Refactor all dashboard pages
+- [ ] Add loading skeletons everywhere
+- [ ] Implement dark mode toggle
+- [ ] Add empty states and error states
+- [ ] Optimize images with Next.js Image
+- [ ] Add micro-interactions and animations
+
+### Week 4: Testing & Deployment
+- [ ] Write unit tests (Vitest)
+- [ ] Write E2E tests (Playwright)
+- [ ] Set up MSW for API mocking
+- [ ] Performance audit (Lighthouse)
+- [ ] Accessibility audit (axe DevTools)
+- [ ] Production deployment checklist
+
+---
+
+## 🎯 Success Metrics
+
+- **Performance**: Lighthouse score >90
+- **Accessibility**: WCAG 2.1 AA compliant (0 critical violations)
+- **Bundle Size**: Initial load <200KB (gzipped)
+- **Type Safety**: 100% TypeScript coverage, strict mode enabled
+- **Test Coverage**: >80% unit test coverage, critical flows E2E tested
+- **User Experience**: <100ms UI response time, smooth 60fps animations
+
+---
+
+This refactoring guide provides a comprehensive, enterprise-grade approach to modernizing your OERMS frontend while maintaining integration with your existing Spring Boot microservices backend.

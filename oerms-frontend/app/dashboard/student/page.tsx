@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ApiError } from '@/lib/api/errors';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
@@ -17,6 +18,7 @@ import {
     ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
 interface StudentStats {
@@ -37,12 +39,14 @@ export default function StudentDashboard() {
     const [recentResults, setRecentResults] = useState<ResultSummaryDTO[]>([]);
     const [availableExamsList, setAvailableExamsList] = useState<ExamDTO[]>([]);
     const [activeAttempt, setActiveAttempt] = useState<AttemptSummary | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
+
 
                 // Add timeout to prevent infinite loading
                 const timeoutPromise = new Promise((_, reject) => {
@@ -57,7 +61,7 @@ export default function StudentDashboard() {
                         apiClient.getPublishedExams({ page: 0, size: 5 }).catch(() => ({ data: { content: [] } }))
                     ]),
                     timeoutPromise
-                ]).catch(() => [{ data: 0 }, { data: 0 }, { data: { content: [] } }, { data: { content: [] } }]) as any;
+                ]).catch(() => [0, 0, { content: [] }, { content: [] }]) as any;
 
                 // Extract data from API responses
                 const publishedCount = publishedCountResponse?.data || 0;
@@ -195,6 +199,11 @@ export default function StudentDashboard() {
                     setRecentResults([]);
                 }
             } catch (error) {
+                if (error instanceof ApiError) {
+                    setError(error.getUserMessage());
+                } else {
+                    setError('An unexpected error occurred while loading the dashboard.');
+                }
                 console.error('Failed to load student dashboard:', error);
             } finally {
                 setLoading(false);
@@ -203,12 +212,35 @@ export default function StudentDashboard() {
 
         loadData();
     }, []);
-
+    
     if (loading) {
         return (
             <DashboardLayout>
-                <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                <div className="space-y-8">
+                    {/* Header skeleton */}
+                    <div>
+                        <SkeletonCard />
+                    </div>
+                    
+                    {/* Stats cards skeleton */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <SkeletonCard key={i} />
+                        ))}
+                    </div>
+                    
+                    {/* Content skeleton */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-6">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <SkeletonCard key={i} />
+                            ))}
+                        </div>
+                        <div className="space-y-6">
+                            <SkeletonCard />
+                            <SkeletonCard />
+                        </div>
+                    </div>
                 </div>
             </DashboardLayout>
         );

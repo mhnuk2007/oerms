@@ -39,6 +39,16 @@ public class ResultController {
         return ResponseEntity.ok(ApiResponse.success("Result retrieved successfully", result));
     }
 
+    @GetMapping("/{id}/details")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get result details", description = "Retrieves detailed result including questions and answers")
+    public ResponseEntity<ApiResponse<ResultDetailsResponse>> getResultDetails(
+            @Parameter(description = "Result ID") @PathVariable UUID id,
+            Authentication auth) {
+        ResultDetailsResponse result = resultService.getResultDetails(id, auth);
+        return ResponseEntity.ok(ApiResponse.success("Result details retrieved successfully", result));
+    }
+
     @GetMapping("/attempt/{attemptId}")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get result by Attempt ID", description = "Retrieves a single result by attempt ID")

@@ -1,6 +1,6 @@
 package com.oerms.attempt.dto;
 
-import com.oerms.attempt.enums.AttemptStatus;
+import com.oerms.common.enums.AttemptStatus;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -15,16 +15,10 @@ public class AttemptSummary {
     private UUID id;
     private UUID examId;
     private String examTitle;
-
     private Integer attemptNumber;
     private AttemptStatus status;
-
     private Integer answeredQuestions;
     private Integer totalQuestions;
-
-    private Double obtainedMarks;
-    private Double percentage;
-
     private LocalDateTime startedAt;
     private LocalDateTime submittedAt;
 }

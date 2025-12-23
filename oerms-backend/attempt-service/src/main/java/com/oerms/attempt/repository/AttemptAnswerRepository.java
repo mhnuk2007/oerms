@@ -14,8 +14,7 @@ import java.util.UUID;
 public interface AttemptAnswerRepository extends JpaRepository<AttemptAnswer, UUID> {
     List<AttemptAnswer> findByAttemptIdOrderByQuestionOrder(UUID attemptId);
     Optional<AttemptAnswer> findByAttemptIdAndQuestionId(UUID attemptId, UUID questionId);
-    long countByAttemptIdAndIsCorrect(UUID attemptId, Boolean isCorrect);
+    long countByAttemptId(UUID attemptId);
 
-    @Query("SELECT SUM(aa.marksObtained) FROM AttemptAnswer aa WHERE aa.attempt.id = :attemptId")
-    Double sumMarksByAttemptId(@Param("attemptId") UUID attemptId);
+
 }

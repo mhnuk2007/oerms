@@ -7,6 +7,8 @@ public enum AttemptStatus {
     NOT_STARTED("Not Started"),
     IN_PROGRESS("In Progress"),
     SUBMITTED("Submitted"),
+    AUTO_SUBMITTED("Auto Submitted"),
+    COMPLETED("Completed"),
     EXPIRED("Expired - Time ran out"),
     EVALUATED("Evaluated");
 

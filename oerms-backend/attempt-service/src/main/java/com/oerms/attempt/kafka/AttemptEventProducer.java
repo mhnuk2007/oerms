@@ -19,36 +19,37 @@ import java.util.UUID;
 public class AttemptEventProducer {
 
     private final KafkaTemplate<String, AttemptEvent> kafkaTemplate;
+    private final AttemptMapper attemptMapper; // inject mapper
 
     private static final String ATTEMPT_STARTED = "attempt-started-topic";
     private static final String ATTEMPT_SUBMITTED = "attempt-submitted-topic";
     private static final String ATTEMPT_AUTO_SUBMITTED = "attempt-auto-submitted-topic";
 
-    public void publishAttemptStarted(ExamAttempt a) {
-        send(a, AttemptEventType.ATTEMPT_STARTED, ATTEMPT_STARTED);
+    public void publishAttemptStarted(ExamAttempt attempt) {
+        send(attempt, AttemptEventType.ATTEMPT_STARTED, ATTEMPT_STARTED);
     }
 
-    public void publishAttemptSubmitted(ExamAttempt a) {
-        send(a, AttemptEventType.ATTEMPT_SUBMITTED, ATTEMPT_SUBMITTED);
+    public void publishAttemptSubmitted(ExamAttempt attempt) {
+        send(attempt, AttemptEventType.ATTEMPT_SUBMITTED, ATTEMPT_SUBMITTED);
     }
 
-    public void publishAttemptAutoSubmitted(ExamAttempt a) {
-        send(a, AttemptEventType.ATTEMPT_AUTO_SUBMITTED, ATTEMPT_AUTO_SUBMITTED);
+    public void publishAttemptAutoSubmitted(ExamAttempt attempt) {
+        send(attempt, AttemptEventType.ATTEMPT_AUTO_SUBMITTED, ATTEMPT_AUTO_SUBMITTED);
     }
 
-    private void send(ExamAttempt a, AttemptEventType type, String topic) {
-        AttemptDTO attemptDto = AttemptMapper.toCommonDto(a);
+    private void send(ExamAttempt attempt, AttemptEventType type, String topic) {
+        AttemptDTO attemptDto = attemptMapper.toCommonDto(attempt); // correct Kafka DTO
 
         AttemptEvent event = AttemptEvent.builder()
                 .eventId(UUID.randomUUID())
                 .eventType(type)
                 .eventTime(LocalDateTime.now())
                 .sourceService("attempt-service")
-                .attemptId(a.getId())
+                .attemptId(attempt.getId())
                 .attemptDTO(attemptDto)
                 .build();
 
-        kafkaTemplate.send(topic, a.getId().toString(), event);
-        log.info("Published {} event for attemptId={}", type, a.getId());
+        kafkaTemplate.send(topic, attempt.getId().toString(), event);
+        log.info("Published {} event for attemptId={}", type, attempt.getId());
     }
 }

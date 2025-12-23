@@ -1,7 +1,7 @@
 package com.oerms.attempt.repository;
 
 import com.oerms.attempt.entity.ExamAttempt;
-import com.oerms.attempt.enums.AttemptStatus;
+import com.oerms.common.enums.AttemptStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +39,10 @@ public interface AttemptRepository extends JpaRepository<ExamAttempt, UUID> {
             @Param("studentId") UUID studentId
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM ExamAttempt a WHERE a.id = :id")
+    Optional<ExamAttempt> findByIdWithLock(@Param("id") UUID id);
+
     long countByExamIdAndStudentId(UUID examId, UUID studentId);
     long countByExamId(UUID examId);
     long countByStudentId(UUID studentId);
@@ -49,9 +53,5 @@ public interface AttemptRepository extends JpaRepository<ExamAttempt, UUID> {
     @Query(value = "SELECT * FROM exam_attempts a WHERE a.status = 'IN_PROGRESS' AND a.started_at + (a.exam_duration_in_minutes * INTERVAL '1 minute') < NOW()", nativeQuery = true)
     List<ExamAttempt> findStalledAttempts();
 
-    @Query("SELECT AVG(a.obtainedMarks) FROM ExamAttempt a WHERE a.examId = :examId AND a.status = 'COMPLETED'")
-    Double getAverageScoreByExamId(@Param("examId") UUID examId);
 
-    @Query("SELECT a FROM ExamAttempt a WHERE a.examId = :examId ORDER BY a.obtainedMarks DESC")
-    List<ExamAttempt> findTopScoresByExamId(@Param("examId") UUID examId, Pageable pageable);
 }

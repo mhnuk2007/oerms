@@ -1,7 +1,7 @@
 package com.oerms.attempt.entity;
 
 import com.oerms.common.entity.BaseEntity;
-import com.oerms.attempt.enums.AttemptStatus;
+import com.oerms.common.enums.AttemptStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction; // Changed from @Where
 import org.hibernate.annotations.Where;
 
 import java.time.LocalDateTime;
@@ -21,7 +20,8 @@ import java.util.UUID;
 @Table(name = "exam_attempts", indexes = {
         @Index(name = "idx_attempt_student_id", columnList = "student_id"),
         @Index(name = "idx_attempt_exam_id", columnList = "exam_id"),
-        @Index(name = "uk_exam_student_status", columnList = "exam_id, student_id, status, deleted", unique = true)
+        @Index(name = "idx_exam_student_status", columnList = "exam_id, student_id, status")
+        // Removed the unique constraint - now handled by partial index in database
 })
 @Data
 @Builder
@@ -66,12 +66,6 @@ public class ExamAttempt extends BaseEntity {
     @Column(name = "total_marks", nullable = false)
     private Integer totalMarks;
 
-    @Column(name = "obtained_marks")
-    private Double obtainedMarks;
-
-    @Column(name = "percentage")
-    private Double percentage;
-
     @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
@@ -81,10 +75,7 @@ public class ExamAttempt extends BaseEntity {
     @Column(name = "time_taken_seconds")
     private Integer timeTakenSeconds;
 
-    @Column(name = "remaining_time_seconds")
-    private Integer remainingTimeSeconds;
-
-    @Column(name = "exam_duration_in_minutes") // Added field
+    @Column(name = "exam_duration_in_minutes")
     private Integer examDurationInMinutes;
 
     @Column(name = "ip_address", length = 50)
@@ -112,16 +103,8 @@ public class ExamAttempt extends BaseEntity {
     @Builder.Default
     private Boolean autoSubmitted = false;
 
-    @Column(name = "reviewed")
-    @Builder.Default
-    private Boolean reviewed = false;
-
-    @Column(name = "passed")
-    private Boolean passed;
-
     @Column(length = 1000)
     private String notes;
-
 
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -151,7 +134,7 @@ public class ExamAttempt extends BaseEntity {
     
     public void updateAnsweredCount() {
         this.answeredQuestions = (int) answers.stream()
-            .filter(a -> a.getAnswerText() != null || !a.getSelectedOptions().isEmpty())
+            .filter(a -> a.getAnswerText() != null || (a.getSelectedOptions() != null && !a.getSelectedOptions().isEmpty()))
             .count();
     }
     
@@ -170,5 +153,21 @@ public class ExamAttempt extends BaseEntity {
     
     public boolean hasViolations() {
         return tabSwitches > 0 || webcamViolations > 0 || copyPasteCount > 5;
+    }
+    
+    /**
+     * Check if the attempt is in a final state (cannot be modified)
+     */
+    public boolean isFinalState() {
+        return status == AttemptStatus.SUBMITTED || 
+               status == AttemptStatus.AUTO_SUBMITTED || 
+               status == AttemptStatus.COMPLETED;
+    }
+    
+    /**
+     * Check if the attempt can be submitted
+     */
+    public boolean canBeSubmitted() {
+        return status == AttemptStatus.IN_PROGRESS;
     }
 }

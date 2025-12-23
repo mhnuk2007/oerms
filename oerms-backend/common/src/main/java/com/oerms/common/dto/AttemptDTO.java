@@ -34,12 +34,9 @@ public class AttemptDTO {
     private Boolean autoSubmitted;
 
     // =========================
-    // Evaluation
+    // Snapshot of Exam Structure
     // =========================
     private Integer totalMarks;
-    private Double obtainedMarks;
-    private Double percentage;
-    private Boolean passed;
     private Integer totalQuestions;
 
     // =========================
@@ -49,7 +46,7 @@ public class AttemptDTO {
     private Integer webcamViolations;
 
     // =========================
-    // Answers (used ONLY inside result-service)
+    // Answers
     // =========================
     private List<AttemptAnswerDTO> answers;
 

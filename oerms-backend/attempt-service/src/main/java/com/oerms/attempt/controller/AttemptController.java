@@ -169,17 +169,6 @@ public class AttemptController {
         return ResponseEntity.ok(ApiResponse.success("Answers retrieved successfully", answers));
     }
 
-    @GetMapping("/{attemptId}/result-details")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Get detailed attempt result", description = "Retrieves a detailed breakdown of the attempt, including questions and answers.")
-    public ResponseEntity<ApiResponse<AttemptResultResponse>> getAttemptResultDetails(
-            @Parameter(description = "Attempt ID") @PathVariable UUID attemptId,
-            Authentication authentication) {
-        log.info("Get detailed attempt result request for attemptId: {}", attemptId);
-        AttemptResultResponse result = attemptService.getAttemptResultDetails(attemptId, authentication);
-        return ResponseEntity.ok(ApiResponse.success("Detailed result retrieved successfully", result));
-    }
-
     // ==================== Teacher/Admin Operations ====================
 
     @GetMapping("/exam/{examId}")
@@ -195,18 +184,6 @@ public class AttemptController {
         Pageable pageable = PageRequest.of(page, size, Sort.by("startedAt").descending());
         Page<AttemptSummary> attempts = attemptService.getExamAttempts(examId, pageable, authentication);
         return ResponseEntity.ok(ApiResponse.success("Attempts retrieved successfully", attempts));
-    }
-
-    @GetMapping("/exam/{examId}/statistics")
-    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
-    @Operation(summary = "Get exam attempt statistics", description = "Retrieves statistics for all attempts of an exam")
-    public ResponseEntity<ApiResponse<ExamAttemptStatistics>> getExamAttemptStatistics(
-            @Parameter(description = "Exam ID") @PathVariable UUID examId,
-            Authentication authentication) {
-        log.info("Get exam attempt statistics: {}", examId);
-        
-        ExamAttemptStatistics statistics = attemptService.getExamAttemptStatistics(examId, authentication);
-        return ResponseEntity.ok(ApiResponse.success("Statistics retrieved successfully", statistics));
     }
 
     @GetMapping("/exam/{examId}/count")

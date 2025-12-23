@@ -17,11 +17,9 @@ public class AttemptAnswerResponse {
     private Set<String> selectedOptions;
     private String answerText;
 
-    private Boolean correct;
     private Integer marksAllocated;
-    private Double marksObtained;
-
     private Integer timeSpentSeconds;
+
     private Boolean flagged;
     private LocalDateTime answeredAt;
 }

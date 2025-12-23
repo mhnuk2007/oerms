@@ -1,6 +1,6 @@
-package com.oerms.attempt.dto;
+package com.oerms.result.dto;
 
-import com.oerms.attempt.enums.AttemptStatus;
+import com.oerms.result.enums.ResultStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,21 +14,23 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AttemptResultResponse {
-    private UUID attemptId;
+public class ResultDetailsResponse {
+    private UUID resultId;
     private UUID examId;
     private String examTitle;
     private UUID studentId;
     private String studentName;
-    private AttemptStatus status;
+    
     private Integer totalMarks;
     private Double obtainedMarks;
     private Double percentage;
-    private Boolean passed;
     private String grade;
-    private String resultStatus;
-    private LocalDateTime publishedAt;
+    private Boolean passed;
+    private ResultStatus status;
+    
     private LocalDateTime submittedAt;
-    private Integer timeTakenSeconds;
-    private List<AttemptResultDetailDTO> details;
+    private LocalDateTime publishedAt;
+    private Long timeTakenSeconds;
+    
+    private List<ResultQuestionDetailDTO> questions;
 }

@@ -2,7 +2,6 @@ package com.oerms.attempt.dto;
 
 import com.oerms.common.enums.AttemptStatus;
 import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -12,7 +11,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AttemptResponse {
-
     private UUID id;
     private UUID examId;
     private String examTitle;
@@ -26,8 +24,8 @@ public class AttemptResponse {
     private Integer totalMarks;
     private LocalDateTime startedAt;
     private LocalDateTime submittedAt;
-    private Integer timeTakenSeconds;
     private Integer examDurationInMinutes;
+    private Integer timeTakenSeconds;
     private Integer tabSwitches;
     private Integer webcamViolations;
     private Boolean autoSubmitted;

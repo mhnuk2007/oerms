@@ -26,21 +26,20 @@ public class UserService {
     private final UserMapper userMapper;
 
     public PageResponse<UserResponse> getAllUsers(Pageable pageable) {
-        Page<User> page = userRepository.findAll(pageable);
-        List<UserResponse> content = page.stream()
-                .map(userMapper::toUserResponse)
-                .collect(Collectors.toList());
-        return PageResponse.of(content, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
+        Page<UserResponse> page = userRepository.findAll(pageable)
+                .map(userMapper::toUserResponse);
+
+        return PageResponse.from(page);
     }
 
     public PageResponse<UserResponse> searchUsers(String query, Pageable pageable) {
-        Page<User> page = userRepository
-                .findByUserNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query, pageable);
-        List<UserResponse> content = page.stream()
-                .map(userMapper::toUserResponse)
-                .collect(Collectors.toList());
-        return PageResponse.of(content, page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
+        Page<UserResponse> page = userRepository
+                .findByUserNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query, pageable)
+                .map(userMapper::toUserResponse);
+
+        return PageResponse.from(page);
     }
+
 
     public UserResponse getUserById(UUID id) {
         return userMapper.toUserResponse(findUser(id));

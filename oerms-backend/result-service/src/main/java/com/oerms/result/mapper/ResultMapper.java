@@ -17,8 +17,6 @@ public interface ResultMapper {
     // ========================
     //  Entity → DTO
     // ========================
-    @Mapping(target = "teacherFeedback", ignore = true) // Ignore unmapped properties
-    @Mapping(target = "teacherRemarks", ignore = true)
     ResultDTO toDTO(Result entity);
 
     ResultSummaryDTO toSummaryDTO(Result entity);

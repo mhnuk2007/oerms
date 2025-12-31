@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Results Published</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #FF9800; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background: #f9f9f9; }
+        .result-box { background: white; padding: 15px; margin: 20px 0; border-left: 4px solid #FF9800; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .button { display: inline-block; padding: 10px 20px; background: #FF9800;
+                  color: white; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Your Results Are Ready!</h1>
+        </div>
+        <div class="content">
+            <p>Hello <span th:text="${studentName}">Student</span>,</p>
+            <p>Results for your exam "<strong th:text="${examTitle}">Exam Title</strong>" have been published.</p>
+
+            <div class="result-box">
+                <h3>Your Score</h3>
+                <p>Marks Obtained: <strong th:text="${obtainedMarks}">0</strong> / <strong th:text="${totalMarks}">0</strong></p>
+                <p>Percentage: <strong th:text="${percentage}">0</strong>%</p>
+                <p>Grade: <strong th:text="${grade}">-</strong></p>
+                <p th:if="${passed}">Status: <strong style="color: green;">PASSED ✓</strong></p>
+                <p th:unless="${passed}">Status: <strong style="color: red;">NOT PASSED</strong></p>
+            </div>
+
+            <p style="text-align: center; margin: 30px 0;">
+                <a th:href="'http://localhost:3000/results/' + ${resultId}" class="button">View Detailed Results</a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2025 OERMS Platform. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

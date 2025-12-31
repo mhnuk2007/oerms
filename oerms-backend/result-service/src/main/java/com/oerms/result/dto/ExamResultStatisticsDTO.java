@@ -14,21 +14,13 @@ public class ExamResultStatisticsDTO {
     private Long totalResults;
     private Long publishedResults;
     private Long pendingGrading;
-    private Long withheldResults;
-
     private Double averageScore;
     private Double highestScore;
     private Double lowestScore;
-    private Double medianScore;
-
     private Double averagePercentage;
-    private Double passRate; // Renamed from passPercentage for consistency
-
-    private Long passedCount; // Added
-    private Long failedCount; // Added
-
-    private Map<String, Long> gradeDistribution; // Changed from individual grades
-    private Long suspiciousResultsCount; // Added
-
-    private Double averageTimeSpent; // minutes
+    private Long passedCount;
+    private Long failedCount;
+    private Double passRate;
+    private Map<String, Long> gradeDistribution;
+    private Long suspiciousResultsCount;
 }

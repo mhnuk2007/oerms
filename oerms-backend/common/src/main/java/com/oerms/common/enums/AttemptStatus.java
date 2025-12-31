@@ -1,24 +1,20 @@
 package com.oerms.common.enums;
 
-/**
- * Status of exam attempt
- */
 public enum AttemptStatus {
-    NOT_STARTED("Not Started"),
-    IN_PROGRESS("In Progress"),
-    SUBMITTED("Submitted"),
-    AUTO_SUBMITTED("Auto Submitted"),
-    COMPLETED("Completed"),
-    EXPIRED("Expired - Time ran out"),
-    EVALUATED("Evaluated");
-
-    private final String description;
-
-    AttemptStatus(String description) {
-        this.description = description;
+    IN_PROGRESS,
+    PAUSED,
+    SUBMITTED,
+    AUTO_SUBMITTED,
+    ABANDONED,
+    COMPLETED,
+    CANCELLED;
+    
+    public boolean isFinalState() {
+        return this == SUBMITTED || this == AUTO_SUBMITTED || 
+               this == ABANDONED || this == CANCELLED;
     }
-
-    public String getDescription() {
-        return description;
+    
+    public boolean canBeSubmitted() {
+        return this == IN_PROGRESS || this == PAUSED;
     }
 }

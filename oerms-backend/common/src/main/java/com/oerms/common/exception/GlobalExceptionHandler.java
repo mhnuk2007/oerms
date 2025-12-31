@@ -13,6 +13,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<String>> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String error = String.format("The parameter '%s' with value '%s' is invalid. A valid UUID is required.", ex.getName(), ex.getValue());
-        return new ResponseEntity<>(ApiResponse.error(error), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(ApiResponse.error(error, null), HttpStatus.BAD_REQUEST);
     }
 }

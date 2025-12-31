@@ -1,10 +1,6 @@
 package com.oerms.result.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,8 +10,12 @@ import java.util.UUID;
 @AllArgsConstructor
 public class StudentStatisticsDTO {
     private UUID studentId;
+    private String studentName;
     private Long totalResults;
     private Long publishedResults;
     private Double averageScore;
+    private Double averagePercentage;
+    private Long passedExams;
+    private Long failedExams;
     private List<ResultSummaryDTO> recentResults;
 }

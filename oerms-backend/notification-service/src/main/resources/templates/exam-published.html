@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Exam Published</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #2196F3; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background: #f9f9f9; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Exam Published Successfully</h1>
+        </div>
+        <div class="content">
+            <p>Hello,</p>
+            <p>Your exam "<strong th:text="${examTitle}">Exam Title</strong>" has been published and is now live.</p>
+            <p>Students can now take this exam.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2025 OERMS Platform. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

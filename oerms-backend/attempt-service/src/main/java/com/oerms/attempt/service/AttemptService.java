@@ -4,6 +4,7 @@ import com.oerms.attempt.client.*;
 import com.oerms.attempt.dto.*;
 import com.oerms.attempt.entity.*;
 import com.oerms.common.enums.AttemptStatus;
+import com.oerms.common.enums.ExamStatus;
 import com.oerms.attempt.kafka.AttemptEventProducer;
 import com.oerms.attempt.mapper.AttemptMapper;
 import com.oerms.attempt.repository.*;
@@ -24,9 +25,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.oerms.common.constant.Constants.Roles.ROLE_ADMIN;
 import static com.oerms.common.constant.Constants.Roles.ROLE_TEACHER;
@@ -204,7 +207,9 @@ public class AttemptService {
 
     @Transactional
     public void autoSubmitExpiredAttempts() {
-        List<ExamAttempt> stalledAttempts = attemptRepository.findStalledAttempts();
+        // Auto-submit attempts that haven't been updated in 24 hours
+        LocalDateTime cutoffTime = LocalDateTime.now().minusHours(24);
+        List<ExamAttempt> stalledAttempts = attemptRepository.findStalledAttempts(cutoffTime);
 
         if (stalledAttempts.isEmpty()) {
             log.info("No expired attempts to auto-submit.");
@@ -311,6 +316,13 @@ public class AttemptService {
     }
 
     @Transactional(readOnly = true)
+    public Long getStudentExamAttemptsCount(UUID examId, Authentication authentication) {
+        UUID studentId = JwtUtils.getUserId(authentication);
+        log.debug("Counting attempts for student: {} and exam: {}", studentId, examId);
+        return attemptRepository.countByExamIdAndStudentId(examId, studentId);
+    }
+
+    @Transactional(readOnly = true)
     public Page<AttemptSummary> getExamAttempts(UUID examId, Pageable pageable,
                                                 Authentication authentication) {
         log.debug("Fetching attempts for exam: {}", examId);
@@ -371,6 +383,650 @@ public class AttemptService {
             log.debug("Ignoring webcam violation for finalized attemptId: {}", attemptId);
         }
     }
+
+    // Add these methods to AttemptService class
+
+    // ==================== NEW IMPLEMENTATIONS ====================
+
+    @Transactional
+    public AttemptResponse pauseAttempt(UUID attemptId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new BadRequestException("Only IN_PROGRESS attempts can be paused");
+        }
+
+        attempt.setStatus(AttemptStatus.PAUSED);
+        attempt.setPausedAt(LocalDateTime.now());
+        attemptRepository.save(attempt);
+
+        log.info("Attempt {} paused by student {}", attemptId, studentId);
+        return attemptMapper.toResponse(attempt);
+    }
+
+    @Transactional
+    public AttemptResponse resumeAttempt(UUID attemptId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        if (attempt.getStatus() != AttemptStatus.PAUSED) {
+            throw new BadRequestException("Only PAUSED attempts can be resumed");
+        }
+
+        attempt.setStatus(AttemptStatus.IN_PROGRESS);
+        attempt.setResumedAt(LocalDateTime.now());
+
+        // Calculate pause duration and add to total time
+        if (attempt.getPausedAt() != null) {
+            long pauseDuration = java.time.Duration.between(
+                    attempt.getPausedAt(), LocalDateTime.now()).toSeconds();
+            attempt.addPauseDuration(pauseDuration);
+        }
+
+        attemptRepository.save(attempt);
+
+        log.info("Attempt {} resumed by student {}", attemptId, studentId);
+        return attemptMapper.toResponse(attempt);
+    }
+
+    @Transactional(readOnly = true)
+    public AttemptStatusDTO getAttemptStatus(UUID attemptId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        LocalDateTime now = LocalDateTime.now();
+        long elapsedSeconds = java.time.Duration.between(attempt.getStartedAt(), now).getSeconds();
+        long examDurationSeconds = attempt.getExamDurationInMinutes() * 60L;
+        long remainingSeconds = Math.max(0, examDurationSeconds - elapsedSeconds);
+
+        return AttemptStatusDTO.builder()
+                .attemptId(attemptId)
+                .status(attempt.getStatus())
+                .startedAt(attempt.getStartedAt())
+                .elapsedTimeSeconds(elapsedSeconds)
+                .remainingTimeSeconds(remainingSeconds)
+                .isExpired(remainingSeconds == 0)
+                .canSubmit(attempt.canBeSubmitted())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public AttemptProgressDTO getAttemptProgress(UUID attemptId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        int totalQuestions = attempt.getTotalQuestions();
+        int answeredCount = (int) attempt.getAnswers().stream()
+                .filter(a -> a.getAnswerText() != null ||
+                        (a.getSelectedOptions() != null && !a.getSelectedOptions().isEmpty()))
+                .count();
+        int unansweredCount = totalQuestions - answeredCount;
+        int flaggedCount = (int) attempt.getAnswers().stream()
+                .filter(a -> Boolean.TRUE.equals(a.getFlagged()))
+                .count();
+
+        double completionPercentage = totalQuestions > 0
+                ? (double) answeredCount * 100 / totalQuestions
+                : 0.0;
+
+        return AttemptProgressDTO.builder()
+                .attemptId(attemptId)
+                .totalQuestions(totalQuestions)
+                .answeredQuestions(answeredCount)
+                .unansweredQuestions(unansweredCount)
+                .flaggedQuestions(flaggedCount)
+                .completionPercentage(completionPercentage)
+                .build();
+    }
+
+    @Transactional
+    public void saveProgress(UUID attemptId, SaveProgressRequest request, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        attempt.setLastActivityAt(LocalDateTime.now());
+        if (request != null && request.getCurrentQuestionId() != null) {
+            attempt.setCurrentQuestionId(request.getCurrentQuestionId());
+        }
+        attemptRepository.save(attempt);
+
+        log.debug("Progress saved for attempt: {}", attemptId);
+    }
+
+    @Transactional
+    public void clearAnswer(UUID attemptId, UUID questionId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        if (attempt.isFinalState()) {
+            throw new BadRequestException("Cannot clear answers for finalized attempt");
+        }
+
+        AttemptAnswer answer = answerRepository.findByAttemptIdAndQuestionId(attemptId, questionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Answer not found"));
+
+        answer.setAnswerText(null);
+        answer.setSelectedOptions(new HashSet<>());
+        answerRepository.save(answer);
+
+        attempt.updateAnsweredCount();
+        attemptRepository.save(attempt);
+
+        log.info("Answer cleared for attempt: {}, question: {}", attemptId, questionId);
+    }
+
+    @Transactional
+    public List<AttemptAnswerResponse> saveBulkAnswers(UUID attemptId,
+                                                       List<SaveAnswerRequest> requests,
+                                                       Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        if (attempt.isFinalState()) {
+            throw new BadRequestException("Cannot save answers for finalized attempt");
+        }
+
+        List<AttemptAnswerResponse> responses = new ArrayList<>();
+
+        for (SaveAnswerRequest request : requests) {
+            try {
+                AttemptAnswer answer = answerRepository
+                        .findByAttemptIdAndQuestionId(attemptId, request.getQuestionId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Question not found: " + request.getQuestionId()));
+
+                updateAnswerFields(answer, request);
+                answerRepository.save(answer);
+                responses.add(attemptMapper.toAnswerResponse(answer));
+
+            } catch (Exception e) {
+                log.error("Failed to save answer for question {}: {}",
+                        request.getQuestionId(), e.getMessage());
+            }
+        }
+
+        attempt.updateAnsweredCount();
+        attempt.updateFlaggedCount();
+        attemptRepository.save(attempt);
+
+        log.info("Bulk saved {} answers for attempt: {}", responses.size(), attemptId);
+        return responses;
+    }
+
+    @Transactional(readOnly = true)
+    public AttemptAnswerResponse getAnswer(UUID attemptId, UUID questionId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        AttemptAnswer answer = answerRepository.findByAttemptIdAndQuestionId(attemptId, questionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Answer not found"));
+
+        return attemptMapper.toAnswerResponse(answer);
+    }
+
+    @Transactional
+    public void flagQuestion(UUID attemptId, UUID questionId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        AttemptAnswer answer = answerRepository.findByAttemptIdAndQuestionId(attemptId, questionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Answer not found"));
+
+        answer.setFlagged(true);
+        answerRepository.save(answer);
+
+        attempt.updateFlaggedCount();
+        attemptRepository.save(attempt);
+
+        log.debug("Question flagged: {} in attempt: {}", questionId, attemptId);
+    }
+
+    @Transactional
+    public void unflagQuestion(UUID attemptId, UUID questionId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        AttemptAnswer answer = answerRepository.findByAttemptIdAndQuestionId(attemptId, questionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Answer not found"));
+
+        answer.setFlagged(false);
+        answerRepository.save(answer);
+
+        attempt.updateFlaggedCount();
+        attemptRepository.save(attempt);
+
+        log.debug("Question unflagged: {} in attempt: {}", questionId, attemptId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> getFlaggedQuestions(UUID attemptId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        return attempt.getAnswers().stream()
+                .filter(a -> Boolean.TRUE.equals(a.getFlagged()))
+                .map(AttemptAnswer::getQuestionId)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void sendHeartbeat(UUID attemptId, ProctoringHeartbeatRequest request, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        attempt.setLastActivityAt(LocalDateTime.now());
+
+        // Store heartbeat data if needed
+        if (request.getCurrentQuestionId() != null) {
+            attempt.setCurrentQuestionId(request.getCurrentQuestionId());
+        }
+
+        attemptRepository.save(attempt);
+        log.trace("Heartbeat received for attempt: {}", attemptId);
+    }
+
+    @Transactional
+    public void uploadScreenshot(UUID attemptId, MultipartFile screenshot, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        // Store screenshot - would integrate with file storage service
+        log.info("Screenshot uploaded for attempt: {}, size: {} bytes",
+                attemptId, screenshot.getSize());
+    }
+
+    @Transactional
+    public void uploadWebcamFrame(UUID attemptId, MultipartFile frame, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        // Store webcam frame - would integrate with file storage service
+        log.info("Webcam frame uploaded for attempt: {}, size: {} bytes",
+                attemptId, frame.getSize());
+    }
+
+    @Transactional(readOnly = true)
+    public ProctoringSummaryDTO getProctoringSummary(UUID attemptId, Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+
+        return ProctoringSummaryDTO.builder()
+                .attemptId(attemptId)
+                .totalTabSwitches(attempt.getTabSwitches())
+                .totalWebcamViolations(attempt.getWebcamViolations())
+                .totalViolations(attempt.getTabSwitches() + attempt.getWebcamViolations())
+                .isSuspicious(attempt.getTabSwitches() > 5 || attempt.getWebcamViolations() > 3)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ViolationDetailDTO> getViolations(UUID attemptId, Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+
+        List<ViolationDetailDTO> violations = new ArrayList<>();
+
+        // Add tab switch violations
+        for (int i = 0; i < attempt.getTabSwitches(); i++) {
+            violations.add(ViolationDetailDTO.builder()
+                    .type("TAB_SWITCH")
+                    .severity("MEDIUM")
+                    .description("Student switched browser tab")
+                    .build());
+        }
+
+        // Add webcam violations
+        for (int i = 0; i < attempt.getWebcamViolations(); i++) {
+            violations.add(ViolationDetailDTO.builder()
+                    .type("WEBCAM_VIOLATION")
+                    .severity("HIGH")
+                    .description("Face not detected or multiple faces")
+                    .build());
+        }
+
+        return violations;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProctoringEventDTO> getProctoringTimeline(UUID attemptId, Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+
+        List<ProctoringEventDTO> timeline = new ArrayList<>();
+
+        timeline.add(ProctoringEventDTO.builder()
+                .eventType("ATTEMPT_STARTED")
+                .timestamp(attempt.getStartedAt())
+                .description("Exam attempt started")
+                .build());
+
+        if (attempt.getSubmittedAt() != null) {
+            timeline.add(ProctoringEventDTO.builder()
+                    .eventType("ATTEMPT_SUBMITTED")
+                    .timestamp(attempt.getSubmittedAt())
+                    .description("Exam attempt submitted")
+                    .build());
+        }
+
+        return timeline;
+    }
+
+    @Transactional(readOnly = true)
+    public AttemptAnalyticsDTO getExamAttemptAnalytics(UUID examId, Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+
+        List<ExamAttempt> attempts = attemptRepository.findByExamId(examId);
+
+        long totalAttempts = attempts.size();
+        long completedAttempts = attempts.stream()
+                .filter(a -> a.getStatus() == AttemptStatus.SUBMITTED ||
+                        a.getStatus() == AttemptStatus.AUTO_SUBMITTED)
+                .count();
+
+        double averageTime = attempts.stream()
+                .filter(a -> a.getTimeTakenSeconds() != null)
+                .mapToLong(ExamAttempt::getTimeTakenSeconds)
+                .average()
+                .orElse(0.0);
+
+        double averageTabSwitches = attempts.stream()
+                .mapToInt(ExamAttempt::getTabSwitches)
+                .average()
+                .orElse(0.0);
+
+        return AttemptAnalyticsDTO.builder()
+                .examId(examId)
+                .totalAttempts(totalAttempts)
+                .completedAttempts(completedAttempts)
+                .inProgressAttempts(totalAttempts - completedAttempts)
+                .averageCompletionTime(averageTime)
+                .averageTabSwitches(averageTabSwitches)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public TimeBreakdownDTO getTimeBreakdown(UUID attemptId, Authentication auth) {
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+
+        boolean isInternal = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(a -> a.equals("SCOPE_internal"));
+
+        if (!isInternal) {
+            UUID userId = JwtUtils.getUserId(auth);
+            String role = JwtUtils.getRole(auth);
+
+            if (!attempt.getStudentId().equals(userId) &&
+                    !role.equals("ROLE_ADMIN") && !role.equals("ROLE_TEACHER")) {
+                throw new UnauthorizedException("Not authorized");
+            }
+        }
+
+        List<TimeBreakdownDTO.QuestionTimeDTO> questionTimes = attempt.getAnswers().stream()
+                .map(answer -> TimeBreakdownDTO.QuestionTimeDTO.builder()
+                        .questionId(answer.getQuestionId())
+                        .questionOrder(answer.getQuestionOrder())
+                        .timeSpentSeconds(answer.getTimeSpentSeconds() != null
+                                ? answer.getTimeSpentSeconds()
+                                : 0L)
+                        .build())
+                .collect(Collectors.toList());
+
+        return TimeBreakdownDTO.builder()
+                .attemptId(attemptId)
+                .totalTimeSeconds(attempt.getTimeTakenSeconds() != null ? attempt.getTimeTakenSeconds().longValue() : 0L)
+                .questionTimeBreakdown(questionTimes)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public CompletionStatsDTO getCompletionStats(UUID examId, Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+
+        List<ExamAttempt> attempts = attemptRepository.findByExamId(examId);
+
+        long completed = attempts.stream()
+                .filter(a -> a.getStatus() == AttemptStatus.SUBMITTED)
+                .count();
+
+        long autoSubmitted = attempts.stream()
+                .filter(a -> a.getStatus() == AttemptStatus.AUTO_SUBMITTED)
+                .count();
+
+        long abandoned = attempts.stream()
+                .filter(a -> a.getStatus() == AttemptStatus.IN_PROGRESS &&
+                        a.getStartedAt().plusMinutes(a.getExamDurationInMinutes() + 30)
+                                .isBefore(LocalDateTime.now()))
+                .count();
+
+        return CompletionStatsDTO.builder()
+                .examId(examId)
+                .totalAttempts((long) attempts.size())
+                .completedCount(completed)
+                .autoSubmittedCount(autoSubmitted)
+                .abandonedCount(abandoned)
+                .completionRate(attempts.size() > 0 ? (double) completed * 100 / attempts.size() : 0.0)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public Double getAverageCompletionTime(UUID examId, Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+
+        return attemptRepository.findByExamId(examId).stream()
+                .filter(a -> a.getTimeTakenSeconds() != null)
+                .mapToLong(ExamAttempt::getTimeTakenSeconds)
+                .average()
+                .orElse(0.0);
+    }
+
+    @Transactional(readOnly = true)
+    public CanStartAttemptDTO canStartAttempt(UUID examId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+
+        ExamDTO exam = getExamOrThrow(examId);
+        boolean canStart = true;
+        List<String> reasons = new ArrayList<>();
+
+        // Check exam status
+        if (!ExamStatus.valueOf(exam.getStatus()).isAvailableForAttempt()) {
+            canStart = false;
+            reasons.add("Exam is not available");
+        }
+
+        // Check if already has IN_PROGRESS attempt
+        Optional<ExamAttempt> existingAttempt = attemptRepository
+                .findActiveAttemptForStudent(examId, studentId);
+        if (existingAttempt.isPresent()) {
+            canStart = false;
+            reasons.add("You already have an active attempt");
+        }
+
+        // Check attempt limits
+        if (exam.getMaxAttempts() != null && exam.getMaxAttempts() > 0) {
+            long attemptCount = attemptRepository.countByExamIdAndStudentId(examId, studentId);
+            if (attemptCount >= exam.getMaxAttempts()) {
+                canStart = false;
+                reasons.add("Maximum attempts reached");
+            }
+        }
+
+        return CanStartAttemptDTO.builder()
+                .canStart(canStart)
+                .reasons(reasons)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public CanSubmitDTO canSubmit(UUID attemptId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+        verifyAttemptOwnership(attempt, studentId);
+
+        boolean canSubmit = attempt.canBeSubmitted();
+        List<String> reasons = new ArrayList<>();
+
+        if (attempt.isFinalState()) {
+            canSubmit = false;
+            reasons.add("Attempt already finalized");
+        }
+
+        if (attempt.getStatus() == AttemptStatus.PAUSED) {
+            canSubmit = false;
+            reasons.add("Resume attempt before submitting");
+        }
+
+        return CanSubmitDTO.builder()
+                .canSubmit(canSubmit)
+                .reasons(reasons)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public Integer getRemainingAttempts(UUID examId, Authentication auth) {
+        UUID studentId = JwtUtils.getUserId(auth);
+        ExamDTO exam = getExamOrThrow(examId);
+
+        if (exam.getMaxAttempts() == null || exam.getMaxAttempts() == 0) {
+            return Integer.MAX_VALUE; // Unlimited attempts
+        }
+
+        long attemptCount = attemptRepository.countByExamIdAndStudentId(examId, studentId);
+        return Math.max(0, exam.getMaxAttempts() - (int) attemptCount);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AttemptSummary> getSuspiciousAttempts(Pageable pageable, Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+
+        return attemptRepository.findSuspiciousAttempts(pageable)
+                .map(attemptMapper::toSummary);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AttemptSummary> getSuspiciousExamAttempts(UUID examId, Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+
+        return attemptRepository.findSuspiciousAttemptsByExam(examId).stream()
+                .map(attemptMapper::toSummary)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void flagAsSuspicious(UUID attemptId, FlagSuspiciousRequest request, Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+        ExamAttempt attempt = getAttemptEntity(attemptId);
+
+        attempt.setFlaggedAsSuspicious(true);
+        attempt.setSuspiciousReason(request.getReason());
+        attemptRepository.save(attempt);
+
+        log.warn("Attempt {} flagged as suspicious: {}", attemptId, request.getReason());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AttemptSummary> searchAttempts(UUID examId, UUID studentId, String status,
+                                               Boolean suspicious, LocalDateTime startDate,
+                                               LocalDateTime endDate, Pageable pageable,
+                                               Authentication auth) {
+        verifyTeacherOrAdminRole(auth);
+
+        AttemptStatus attemptStatus = status != null ? AttemptStatus.valueOf(status) : null;
+
+        return attemptRepository.searchAttempts(
+                        examId, studentId, attemptStatus, suspicious, startDate, endDate, pageable)
+                .map(attemptMapper::toSummary);
+    }
+
+    @Transactional
+    public BulkOperationResultDTO bulkSubmit(List<UUID> attemptIds, Authentication auth) {
+        if (!JwtUtils.getRole(auth).equals("ROLE_ADMIN")) {
+            throw new UnauthorizedException("Only admins can bulk submit");
+        }
+
+        List<UUID> successful = new ArrayList<>();
+        Map<UUID, String> failed = new HashMap<>();
+
+        for (UUID attemptId : attemptIds) {
+            try {
+                ExamAttempt attempt = attemptRepository.findByIdWithLock(attemptId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Attempt not found: " + attemptId));
+
+                if (attempt.isFinalState()) {
+                    failed.put(attemptId, "Already finalized");
+                    continue;
+                }
+
+                attempt.setStatus(AttemptStatus.AUTO_SUBMITTED);
+                attempt.setSubmittedAt(LocalDateTime.now());
+                attempt.setTimeTakenSeconds(attempt.calculateTimeTaken());
+                attempt.setAutoSubmitted(true);
+
+                attemptRepository.save(attempt);
+                eventProducer.publishAttemptAutoSubmitted(attempt);
+
+                successful.add(attemptId);
+
+            } catch (Exception e) {
+                failed.put(attemptId, e.getMessage());
+                log.error("Failed to bulk submit attempt {}: {}", attemptId, e.getMessage());
+            }
+        }
+
+        return BulkOperationResultDTO.builder()
+                .totalRequested(attemptIds.size())
+                .successful(successful.size())
+                .failed(failed.size())
+                .successfulIds(successful)
+                .failedItems(failed)
+                .build();
+    }
+
+    @Transactional
+    public BulkOperationResultDTO bulkDelete(List<UUID> attemptIds, Authentication auth) {
+        if (!JwtUtils.getRole(auth).equals("ROLE_ADMIN")) {
+            throw new UnauthorizedException("Only admins can bulk delete");
+        }
+
+        List<UUID> successful = new ArrayList<>();
+        Map<UUID, String> failed = new HashMap<>();
+
+        for (UUID attemptId : attemptIds) {
+            try {
+                ExamAttempt attempt = getAttemptEntity(attemptId);
+                attemptRepository.delete(attempt);
+                successful.add(attemptId);
+
+            } catch (Exception e) {
+                failed.put(attemptId, e.getMessage());
+                log.error("Failed to bulk delete attempt {}: {}", attemptId, e.getMessage());
+            }
+        }
+
+        return BulkOperationResultDTO.builder()
+                .totalRequested(attemptIds.size())
+                .successful(successful.size())
+                .failed(failed.size())
+                .successfulIds(successful)
+                .failedItems(failed)
+                .build();
+    }
+
 
     // Private helper methods
 
@@ -452,7 +1108,7 @@ public class AttemptService {
     }
 
     private void validateExamForAttempt(ExamDTO exam) {
-        if (!exam.getStatus().isAvailableForAttempt()) {
+        if (!ExamStatus.valueOf(exam.getStatus()).isAvailableForAttempt()) {
             throw new BadRequestException(
                     "Exam is not available for attempt. Current status: " + exam.getStatus());
         }

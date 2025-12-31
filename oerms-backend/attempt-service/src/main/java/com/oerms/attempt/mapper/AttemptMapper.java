@@ -48,6 +48,7 @@ public class AttemptMapper {
         if (answer == null) return null;
 
         return AttemptAnswerResponse.builder()
+                .id(answer.getId())
                 .questionId(answer.getQuestionId())
                 .questionOrder(answer.getQuestionOrder())
                 .selectedOptions(answer.getSelectedOptions())
@@ -134,10 +135,10 @@ public class AttemptMapper {
                 .studentId(attempt.getStudentId())
                 .studentName(attempt.getStudentName())
                 .attemptNumber(attempt.getAttemptNumber())
-                .status(attempt.getStatus())
+                .status(attempt.getStatus().name())
                 .startedAt(attempt.getStartedAt())
                 .submittedAt(attempt.getSubmittedAt())
-                .timeTakenSeconds(attempt.getTimeTakenSeconds())
+                .timeTakenSeconds(attempt.getTimeTakenSeconds() != null ? attempt.getTimeTakenSeconds().longValue() : null)
                 .totalMarks(attempt.getTotalMarks())
                 .totalQuestions(attempt.getTotalQuestions())
                 .tabSwitches(attempt.getTabSwitches())

@@ -48,6 +48,6 @@ public class RoleController {
 
         log.info("Fetching user with id {}", userId);
         UserResponse user = authService.getUserById(userId);
-        return ResponseEntity.ok(ApiResponse.success(user));
+        return ResponseEntity.ok(ApiResponse.success("User fetched successfully", user));
     }
 }

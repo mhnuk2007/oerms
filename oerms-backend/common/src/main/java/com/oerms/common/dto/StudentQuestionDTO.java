@@ -1,12 +1,6 @@
 package com.oerms.common.dto;
 
-import com.oerms.common.enums.DifficultyLevel;
-import com.oerms.common.enums.QuestionType;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.*;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,12 +9,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StudentQuestionDTO {
-  private UUID id;
-  private String questionText;
-  private QuestionType type;
-  private Integer marks;
-  private Integer orderIndex;
-  private List<String> options;
-  private DifficultyLevel difficultyLevel;
-  private String imageUrl;
+    private UUID id;
+    private String questionText;
+    private String type;
+    private List<String> options;
+    private Integer marks;
+    private String difficulty;
+    private String topic;
+    private Integer questionOrder;
 }

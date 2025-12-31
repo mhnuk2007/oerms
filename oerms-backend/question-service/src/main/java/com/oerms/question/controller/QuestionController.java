@@ -102,8 +102,30 @@ public class QuestionController {
         questionService.deleteQuestion(id, authentication);
         return ResponseEntity.ok(ApiResponse.success("Question deleted successfully", null));
     }
+    @PostMapping("/exam/{sourceExamId}/duplicate/{targetExamId}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN') or hasAuthority('SCOPE_internal')")
+    @Operation(
+            summary = "Duplicate exam questions",
+            description = "Copies all questions from source exam to target exam (for exam duplication and templates)"
+    )
+    public ResponseEntity<ApiResponse<List<QuestionDTO>>> duplicateExamQuestions(
+            @PathVariable UUID sourceExamId,
+            @PathVariable UUID targetExamId,
+            Authentication authentication) {
+        log.info("Received request to duplicate questions from exam {} to exam {}",
+                sourceExamId, targetExamId);
 
-    @PostMapping("/bulk")
+        List<QuestionDTO> duplicatedQuestions = questionService.duplicateExamQuestions(
+                sourceExamId, targetExamId, authentication);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "Questions duplicated successfully",
+                duplicatedQuestions));
+    }
+
+
+
+@PostMapping("/bulk")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     @Operation(summary = "Bulk create questions", description = "Creates multiple questions at once")
     public ResponseEntity<ApiResponse<List<QuestionDTO>>> bulkCreateQuestions(

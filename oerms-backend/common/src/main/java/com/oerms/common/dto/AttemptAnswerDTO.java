@@ -13,13 +13,10 @@ public class AttemptAnswerDTO {
     private UUID id;
     private UUID questionId;
     private Integer questionOrder;
-
-    private Set<String> selectedOptions;
     private String answerText;
-
-    private Integer marksAllocated;
-
-    private Integer timeSpentSeconds;
+    private Set<String> selectedOptions;
     private Boolean flagged;
+    private Long timeSpentSeconds;
+    private Integer marksAllocated;
     private LocalDateTime answeredAt;
 }

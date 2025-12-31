@@ -37,7 +37,7 @@ public class UserManagementController {  // RENAMED FROM UserManagementControlle
 
         log.info("Admin fetching users page {} size {} sorted by {} {}", page, size, sortBy, sortDir);
         PageResponse<UserResponse> users = userService.getAllUsers(pageable);
-        return ResponseEntity.ok(ApiResponse.success(users));
+        return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users));
     }
 
     @GetMapping("/search")
@@ -57,7 +57,7 @@ public class UserManagementController {  // RENAMED FROM UserManagementControlle
         log.info("Admin searching users with query '{}' page {} size {} sorted by {} {}",
                 query, page, size, sortBy, sortDir);
         PageResponse<UserResponse> users = userService.searchUsers(query, pageable);
-        return ResponseEntity.ok(ApiResponse.success(users));
+        return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users));
     }
 
     @GetMapping("/{id}")
@@ -65,7 +65,7 @@ public class UserManagementController {  // RENAMED FROM UserManagementControlle
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable UUID id) {
         log.info("Admin fetching user with id {}", id);
         UserResponse user = userService.getUserById(id);
-        return ResponseEntity.ok(ApiResponse.success(user));
+        return ResponseEntity.ok(ApiResponse.success("User fetched successfully", user));
     }
 
     @PutMapping("/{id}/enable")

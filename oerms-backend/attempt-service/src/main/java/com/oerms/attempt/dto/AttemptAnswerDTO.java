@@ -19,7 +19,7 @@ public class AttemptAnswerDTO {
     private String answerText;
 
     private Integer marksAllocated;
-    private Integer timeSpentSeconds;
+    private Long timeSpentSeconds;
 
     private Boolean flagged;
     private LocalDateTime answeredAt;

@@ -44,9 +44,9 @@ public class AttemptAnswer extends BaseEntity {
             name = "attempt_selected_options",
             joinColumns = @JoinColumn(name = "attempt_answer_id")
     )
-    @Column(name = "option_value") // Changed column name to reflect String values
+    @Column(name = "option_value")
     @Builder.Default
-    private Set<String> selectedOptions = new HashSet<>(); // Changed type from UUID to String
+    private Set<String> selectedOptions = new HashSet<>();
 
     @Column(name = "answer_text", length = 5000)
     private String answerText;
@@ -55,7 +55,7 @@ public class AttemptAnswer extends BaseEntity {
     private Integer marksAllocated;
 
     @Column(name = "time_spent_seconds")
-    private Integer timeSpentSeconds;
+    private Long timeSpentSeconds;
 
     @Column(name = "flagged")
     @Builder.Default

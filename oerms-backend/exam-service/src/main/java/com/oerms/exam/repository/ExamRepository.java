@@ -15,30 +15,26 @@ import java.util.UUID;
 
 @Repository
 public interface ExamRepository extends JpaRepository<Exam, UUID> {
-
-    // ==================== Basic Queries ====================
-
+    
+    // ==================== Basic Query Methods ====================
+    
     Page<Exam> findByTeacherId(UUID teacherId, Pageable pageable);
-
+    
     Page<Exam> findByStatusAndIsActive(ExamStatus status, Boolean isActive, Pageable pageable);
-
+    
     Long countByTeacherId(UUID teacherId);
-
+    
     Long countByStatus(ExamStatus status);
-
-    // ==================== Date-based Queries ====================
-
-    @Query("SELECT e FROM Exam e WHERE e.status = 'PUBLISHED' " +
-            "AND e.isActive = true " +
-            "AND (e.startTime IS NULL OR e.startTime <= :now) " +
-            "AND (e.endTime IS NULL OR e.endTime >= :now)")
+    
+    Page<Exam> findBySubject(String subject, Pageable pageable);
+    
+    Page<Exam> findByIsTemplate(Boolean isTemplate, Pageable pageable);
+    
+    // ==================== Time-based Query Methods ====================
+    
+    @Query("SELECT e FROM Exam e WHERE e.status = 'PUBLISHED' AND e.isActive = true " +
+           "AND (:now BETWEEN e.startTime AND e.endTime OR (e.startTime IS NULL OR e.endTime IS NULL))")
     List<Exam> findActiveExams(@Param("now") LocalDateTime now);
-
-    @Query("SELECT e FROM Exam e WHERE e.status = 'PUBLISHED' " +
-            "AND e.isActive = true " +
-            "AND e.startTime <= :now " +
-            "AND e.endTime >= :now")
-    List<Exam> findOngoingExams(@Param("now") LocalDateTime now);
 
     @Query("SELECT e FROM Exam e WHERE e.status = 'PUBLISHED' " +
             "AND e.isActive = true " +
@@ -79,44 +75,58 @@ public interface ExamRepository extends JpaRepository<Exam, UUID> {
     @Query("SELECT e FROM Exam e WHERE e.status = 'CANCELLED' " +
             "AND e.updatedAt < :threshold")
     List<Exam> findOldCancelledExams(@Param("threshold") LocalDateTime threshold);
+    
+    @Query("SELECT e FROM Exam e WHERE e.status = 'PUBLISHED' AND e.isActive = true " +
+           "AND e.startTime <= :now AND (e.endTime IS NULL OR e.endTime >= :now)")
+    List<Exam> findOngoingExams(@Param("now") LocalDateTime now);
+    
+    @Query("SELECT e FROM Exam e WHERE e.status = 'PUBLISHED' AND e.isActive = true " +
+           "AND (e.startTime IS NULL OR e.startTime <= :now) " +
+           "AND (e.endTime IS NULL OR e.endTime >= :now)")
+    Page<Exam> findAvailableExamsForStudent(@Param("now") LocalDateTime now, Pageable pageable);
+    
 
-    // ==================== Search Queries ====================
-
+    @Query("SELECT e FROM Exam e WHERE e.status = 'PUBLISHED' AND e.isActive = true " +
+           "AND e.endTime BETWEEN :now AND :endTime ORDER BY e.endTime ASC")
+    List<Exam> findExamsEndingSoon(@Param("now") LocalDateTime now, @Param("endTime") LocalDateTime endTime);
+    
+    // ==================== Advanced Search Method ====================
+    
     @Query("SELECT e FROM Exam e WHERE " +
-            "LOWER(e.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(e.description) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    Page<Exam> searchExams(@Param("keyword") String keyword, Pageable pageable);
-
-    @Query("SELECT e FROM Exam e WHERE e.status = 'PUBLISHED' " +
-            "AND e.isActive = true " +
-            "AND (LOWER(e.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(e.description) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Exam> searchPublishedExams(@Param("keyword") String keyword, Pageable pageable);
-
-    @Query("SELECT e FROM Exam e WHERE e.teacherId = :teacherId " +
-            "AND (LOWER(e.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(e.description) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Exam> searchTeacherExams(
-            @Param("teacherId") UUID teacherId,
-            @Param("keyword") String keyword,
-            Pageable pageable);
-
-    // ==================== Statistics Queries ====================
-
-    @Query("SELECT e.status, COUNT(e) FROM Exam e WHERE e.teacherId = :teacherId " +
-            "GROUP BY e.status")
-    List<Object[]> countExamsByStatusForTeacher(@Param("teacherId") UUID teacherId);
-
-    @Query("SELECT e FROM Exam e WHERE e.status IN :statuses")
-    List<Exam> findByStatusIn(@Param("statuses") List<ExamStatus> statuses);
-
-    @Query("SELECT e FROM Exam e WHERE e.teacherId = :teacherId AND e.status = :status")
-    Page<Exam> findByTeacherIdAndStatus(
-            @Param("teacherId") UUID teacherId,
+           "(:title IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :title, '%'))) AND " +
+           "(:subject IS NULL OR LOWER(e.subject) = LOWER(:subject)) AND " +
+           "(:status IS NULL OR e.status = :status) AND " +
+           "(:teacherId IS NULL OR e.teacherId = :teacherId) AND " +
+           "(:minDuration IS NULL OR e.duration >= :minDuration) AND " +
+           "(:maxDuration IS NULL OR e.duration <= :maxDuration) AND " +
+           "(:startDate IS NULL OR e.startTime >= :startDate) AND " +
+           "(:endDate IS NULL OR e.endTime <= :endDate) AND " +
+           "(:minTotalMarks IS NULL OR e.totalMarks >= :minTotalMarks) AND " +
+           "(:maxTotalMarks IS NULL OR e.totalMarks <= :maxTotalMarks) AND " +
+           "(:isActive IS NULL OR e.isActive = :isActive)")
+    Page<Exam> searchExams(
+            @Param("title") String title,
+            @Param("subject") String subject,
             @Param("status") ExamStatus status,
+            @Param("teacherId") UUID teacherId,
+            @Param("minDuration") Integer minDuration,
+            @Param("maxDuration") Integer maxDuration,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("minTotalMarks") Integer minTotalMarks,
+            @Param("maxTotalMarks") Integer maxTotalMarks,
+            @Param("isActive") Boolean isActive,
             Pageable pageable);
-
-    @Query("SELECT COUNT(e) FROM Exam e WHERE e.teacherId = :teacherId " +
-            "AND e.status = 'PUBLISHED' AND e.isActive = true")
-    Long countActiveExamsByTeacher(@Param("teacherId") UUID teacherId);
+    
+    // ==================== Conflict Detection ====================
+    
+    @Query("SELECT e FROM Exam e WHERE e.id != :examId " +
+           "AND e.status = 'PUBLISHED' AND e.isActive = true " +
+           "AND ((e.startTime BETWEEN :startTime AND :endTime) " +
+           "OR (e.endTime BETWEEN :startTime AND :endTime) " +
+           "OR (e.startTime <= :startTime AND e.endTime >= :endTime))")
+    List<Exam> findConflictingExams(
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("examId") UUID examId);
 }

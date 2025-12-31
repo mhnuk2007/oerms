@@ -64,7 +64,7 @@ public class AuthController {
 
         UserResponse user = authService.getUserByEmail(email);
 
-        return ResponseEntity.ok(ApiResponse.success(user));
+        return ResponseEntity.ok(ApiResponse.success("Current user fetched successfully", user));
     }
 
     @GetMapping("/health")

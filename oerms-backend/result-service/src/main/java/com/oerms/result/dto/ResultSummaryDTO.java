@@ -13,11 +13,16 @@ public class ResultSummaryDTO {
     private UUID id;
     private UUID examId;
     private String examTitle;
+    private UUID studentId;
+    private String studentName;
     private Double obtainedMarks;
     private Integer totalMarks;
     private Double percentage;
     private String grade;
     private Boolean passed;
     private ResultStatus status;
+    private Integer rank;
+    private LocalDateTime submittedAt;
     private LocalDateTime publishedAt;
+    private Boolean suspiciousActivity;
 }

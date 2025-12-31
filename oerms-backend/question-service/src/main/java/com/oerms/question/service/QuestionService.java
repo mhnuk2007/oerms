@@ -11,6 +11,7 @@ import com.oerms.question.dto.*;
 import com.oerms.question.entity.DifficultyLevel;
 import com.oerms.question.entity.Question;
 import com.oerms.question.entity.QuestionType;
+import com.oerms.question.mapper.QuestionMapper;
 import com.oerms.question.repository.QuestionRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class QuestionService {
 
     private final QuestionRepository questionRepository;
     private final ExamServiceClient examServiceClient;
+    private final QuestionMapper questionMapper;
 
     @Transactional
     @CacheEvict(value = {"examQuestions", "examQuestionsStudent", "questionStatistics"}, key = "#request.examId")
@@ -141,6 +143,56 @@ public class QuestionService {
         log.info("Successfully updated questionId: {}", questionId);
         return mapToDTO(question);
     }
+
+    @Transactional
+    public List<QuestionDTO> duplicateExamQuestions(UUID sourceExamId, UUID targetExamId, Authentication authentication) {
+        log.info("Duplicating questions from exam {} to exam {}", sourceExamId, targetExamId);
+
+        // Get all questions from source exam
+        List<Question> sourceQuestions = questionRepository.findByExamIdOrderByOrderIndexAsc(sourceExamId);
+
+        if (sourceQuestions.isEmpty()) {
+            log.warn("No questions found in source exam {}", sourceExamId);
+            return Collections.emptyList();
+        }
+
+        // Get user info for audit
+        UUID userId = JwtUtils.getUserId(authentication);
+        String username = JwtUtils.getUsername(authentication);
+
+        // Create duplicated questions
+        List<Question> duplicatedQuestions = new ArrayList<>();
+
+        for (Question sourceQuestion : sourceQuestions) {
+            Question newQuestion = new Question();
+
+            // Copy all fields
+            newQuestion.setExamId(targetExamId);
+            newQuestion.setQuestionText(sourceQuestion.getQuestionText());
+            newQuestion.setType(sourceQuestion.getType());
+            newQuestion.setMarks(sourceQuestion.getMarks());
+            newQuestion.setOrderIndex(sourceQuestion.getOrderIndex());
+            newQuestion.setOptions(sourceQuestion.getOptions());
+            newQuestion.setCorrectAnswer(sourceQuestion.getCorrectAnswer());
+            newQuestion.setExplanation(sourceQuestion.getExplanation());
+            newQuestion.setDifficultyLevel(sourceQuestion.getDifficultyLevel());
+            newQuestion.setExplanation(sourceQuestion.getExplanation());
+            newQuestion.setImageUrl(sourceQuestion.getImageUrl());
+
+            duplicatedQuestions.add(newQuestion);
+        }
+
+        // Save all duplicated questions
+        List<Question> savedQuestions = questionRepository.saveAll(duplicatedQuestions);
+
+        log.info("Successfully duplicated {} questions from exam {} to exam {}",
+                savedQuestions.size(), sourceExamId, targetExamId);
+
+        return savedQuestions.stream()
+                .map(questionMapper::toQuestionDTO)
+                .collect(Collectors.toList());
+    }
+
 
     @Transactional
     @CacheEvict(value = {"examQuestions", "examQuestionsStudent", "questionStatistics"}, allEntries = true)

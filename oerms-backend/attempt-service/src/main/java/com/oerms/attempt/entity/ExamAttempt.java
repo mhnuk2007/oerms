@@ -21,7 +21,6 @@ import java.util.UUID;
         @Index(name = "idx_attempt_student_id", columnList = "student_id"),
         @Index(name = "idx_attempt_exam_id", columnList = "exam_id"),
         @Index(name = "idx_exam_student_status", columnList = "exam_id, student_id, status")
-        // Removed the unique constraint - now handled by partial index in database
 })
 @Data
 @Builder
@@ -114,6 +113,29 @@ public class ExamAttempt extends BaseEntity {
     @Builder.Default
     private boolean deleted = false;
 
+    @Column(name = "paused_at")
+    private LocalDateTime pausedAt;
+
+    @Column(name = "resumed_at")
+    private LocalDateTime resumedAt;
+
+    @Column(name = "last_activity_at")
+    private LocalDateTime lastActivityAt;
+
+    @Column(name = "current_question_id")
+    private UUID currentQuestionId;
+
+    @Column(name = "flagged_as_suspicious")
+    @Builder.Default
+    private Boolean flaggedAsSuspicious = false;
+
+    @Column(name = "suspicious_reason", length = 500)
+    private String suspiciousReason;
+    
+    @Column(name = "total_pause_duration_seconds")
+    @Builder.Default
+    private Long totalPauseDurationSeconds = 0L;
+
     // Helper methods
     public void addAnswer(AttemptAnswer answer) {
         answers.add(answer);
@@ -146,9 +168,14 @@ public class ExamAttempt extends BaseEntity {
     
     public Integer calculateTimeTaken() {
         if (startedAt != null && submittedAt != null) {
-            return (int) java.time.Duration.between(startedAt, submittedAt).getSeconds();
+            long totalSeconds = java.time.Duration.between(startedAt, submittedAt).getSeconds();
+            return (int) (totalSeconds - totalPauseDurationSeconds);
         }
         return null;
+    }
+    
+    public void addPauseDuration(long seconds) {
+        this.totalPauseDurationSeconds += seconds;
     }
     
     public boolean hasViolations() {

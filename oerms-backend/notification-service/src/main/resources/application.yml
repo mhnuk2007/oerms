@@ -1,3 +1,6 @@
+server:
+  port: 9006
+
 spring:
   application:
     name: notification-service
@@ -5,7 +8,8 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/oerms_notification
     username: postgres
-    password: 0000
+    password: "0000"
+    driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
@@ -15,12 +19,17 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
 
   data:
     redis:
@@ -30,7 +39,6 @@ spring:
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-
     consumer:
       group-id: notification-service-group
       auto-offset-reset: earliest
@@ -38,7 +46,6 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: com.oerms.common.event
-
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -48,14 +55,18 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${EMAIL_USERNAME:your-email@gmail.com}
-    password: ${EMAIL_PASSWORD:your-password}
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
   security:
     oauth2:
@@ -63,23 +74,17 @@ spring:
         jwt:
           issuer-uri: http://localhost:9000
 
-server:
-  port: 9006
-
 eureka:
   client:
     register-with-eureka: true
     fetch-registry: true
     service-url:
       defaultZone: http://localhost:8761/eureka/
-
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${server.port}
-
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
-
     home-page-url: http://localhost:${server.port}/
     status-page-url: http://localhost:${server.port}/actuator/info
     health-check-url: http://localhost:${server.port}/actuator/health
@@ -102,24 +107,6 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
-
-kafka:
-  topics:
-    exam-created: exam-created-topic
-    exam-published: exam-published-topic
-    attempt-started: attempt-started-topic
-    attempt-submitted: attempt-submitted-topic
-    result-generated: result-generated-topic
-    user-registered: user-registered-topic
-    password-reset: password-reset-topic
-
-
-notification:
-  email-enabled: true
-  sms-enabled: false  # Enable after Twilio integration
-  push-enabled: true
-
-
 feign:
   client:
     config:
@@ -127,12 +114,38 @@ feign:
         connectTimeout: 5000
         readTimeout: 5000
 
+kafka:
+  topics:
+    exam-created: exam-created-topic
+    exam-published: exam-published-topic
+    attempt-started: attempt-started-topic
+    attempt-submitted: attempt-submitted-topic
+    result-published: result-published-topic
+    user-registered: user-registered-topic
+    password-reset: password-reset-topic
+
+app:
+  notification:
+    email:
+      enabled: true
+      from: noreply@oerms.com
+      from-name: OERMS Platform
+    sms:
+      enabled: false
+      provider: twilio
+      account-sid: ${SMS_ACCOUNT_SID:}
+      auth-token: ${SMS_AUTH_TOKEN:}
+      from-number: ${SMS_FROM_NUMBER:}
+    in-app:
+      enabled: true
+      retention-days: 30
+    websocket:
+      enabled: true
 
 twilio:
   account-sid: ${TWILIO_ACCOUNT_SID:}
   auth-token: ${TWILIO_AUTH_TOKEN:}
   from-number: ${TWILIO_FROM_NUMBER:+1234567890}
-
 
 springdoc:
   api-docs:

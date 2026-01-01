@@ -1,0 +1,17 @@
+{
+  "info": {
+    "title": "OERMS API Gateway",
+    "description": "Aggregated API Documentation for all microservices",
+    "version": "1.0.0"
+  },
+  "paths": {
+
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "API Gateway"
+    }
+  ],
+  "swagger": "3.0.1"
+}

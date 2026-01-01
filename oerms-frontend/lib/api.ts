@@ -440,6 +440,21 @@ class APIClient {
     });
   }
 
+  async logout(): Promise<any> {
+    try {
+      await this.request('http://localhost:8080/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Logout failed', error);
+    } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+    }
+  }
+
   async getExamQuestions(examId: string): Promise<any> {
     return this.request(`/api/questions/exam/${examId}`);
   }
@@ -464,6 +479,21 @@ class APIClient {
       method: 'POST',
       body: JSON.stringify({ questions }),
     });
+  }
+
+  async logout(): Promise<any> {
+    try {
+      await this.request('http://localhost:8080/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Logout failed', error);
+    } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+    }
   }
 
   async validateExamQuestions(examId: string): Promise<any> {

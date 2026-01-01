@@ -1,0 +1,3011 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OERMS Attempt Service API",
+    "description": "API documentation for Exam Attempt Management Service",
+    "contact": {
+      "name": "OERMS Team",
+      "email": "support@oerms.com"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:9004",
+      "description": "Direct Access"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Via API Gateway"
+    }
+  ],
+  "security": [
+    {
+      "Bearer Authentication": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Attempt Management",
+      "description": "APIs for managing exam attempts"
+    }
+  ],
+  "paths": {
+    "/api/attempts/{attemptId}/webcam-violation": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Record webcam violation",
+        "description": "Records webcam/face detection violations",
+        "operationId": "recordWebcamViolation",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "description": "Attempt ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/violations/custom": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Record custom violation",
+        "description": "Records any custom proctoring violation",
+        "operationId": "recordCustomViolation",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "description": "Attempt ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "violationType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/tab-switch": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Record tab switch",
+        "description": "Records when student switches browser tabs during exam",
+        "operationId": "recordTabSwitch",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "description": "Attempt ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/save-progress": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Save progress",
+        "description": "Auto-save attempt progress",
+        "operationId": "saveProgress",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveProgressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/resume": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Resume attempt",
+        "description": "Resume paused attempt",
+        "operationId": "resumeAttempt",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/proctoring/webcam-frame": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Upload webcam frame",
+        "description": "Upload webcam frame for face detection",
+        "operationId": "uploadWebcamFrame",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "frame": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "frame"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/proctoring/screenshot": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Upload proctoring screenshot",
+        "description": "Upload screenshot for proctoring",
+        "operationId": "uploadScreenshot",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "screenshot": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "screenshot"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/proctoring/heartbeat": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Send proctoring heartbeat",
+        "description": "Regular heartbeat for proctoring",
+        "operationId": "sendHeartbeat",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProctoringHeartbeatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/pause": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Pause attempt",
+        "description": "Pause exam attempt (if allowed)",
+        "operationId": "pauseAttempt",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/flag-suspicious": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Flag attempt as suspicious",
+        "description": "Manually flag attempt for review",
+        "operationId": "flagAsSuspicious",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagSuspiciousRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/answers": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get attempt answers",
+        "description": "Retrieves all answers for an attempt",
+        "operationId": "getAttemptAnswers",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "description": "Attempt ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListAttemptAnswerResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Save answer",
+        "description": "Saves or updates an answer for a question in an attempt",
+        "operationId": "saveAnswer",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "description": "Attempt ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptAnswerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/answers/{questionId}/flag": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Flag question for review",
+        "description": "Mark question for later review",
+        "operationId": "flagQuestion",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Unflag question",
+        "description": "Remove review flag from question",
+        "operationId": "unflagQuestion",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/answers/bulk": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Save multiple answers",
+        "description": "Save answers for multiple questions at once",
+        "operationId": "saveBulkAnswers",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SaveAnswerRequest"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListAttemptAnswerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/submit": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Submit attempt",
+        "description": "Submits a completed exam attempt",
+        "operationId": "submitAttempt",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/start": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Start exam attempt",
+        "description": "Starts a new exam attempt for a student",
+        "operationId": "startAttempt",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/bulk/submit": {
+      "post": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Bulk submit attempts",
+        "description": "Force submit multiple attempts",
+        "operationId": "bulkSubmit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkOperationResultDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get attempt details",
+        "description": "Retrieves detailed information about an attempt",
+        "operationId": "getAttempt",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "description": "Attempt ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/time-breakdown": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get time breakdown",
+        "description": "Time spent per question/section",
+        "operationId": "getTimeBreakdown",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTimeBreakdownDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/status": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get attempt status",
+        "description": "Get current status and remaining time",
+        "operationId": "getAttemptStatus",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptStatusDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/progress": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get attempt progress",
+        "description": "Get progress details (answered/unanswered)",
+        "operationId": "getAttemptProgress",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptProgressDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/proctoring/violations": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get violation details",
+        "description": "Get detailed violation logs",
+        "operationId": "getViolations",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListViolationDetailDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/proctoring/timeline": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get proctoring timeline",
+        "description": "Get chronological timeline of events",
+        "operationId": "getProctoringTimeline",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListProctoringEventDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/proctoring/summary": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get proctoring summary",
+        "description": "Get summary of all proctoring events",
+        "operationId": "getProctoringSummary",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProctoringSummaryDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/flagged-questions": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get flagged questions",
+        "description": "Get all questions marked for review",
+        "operationId": "getFlaggedQuestions",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListUUID"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/can-submit": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Check if can submit",
+        "description": "Validate if attempt can be submitted",
+        "operationId": "canSubmit",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCanSubmitDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/{attemptId}/answers/{questionId}": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get specific answer",
+        "description": "Get answer for a specific question",
+        "operationId": "getAnswer",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptAnswerResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Clear answer",
+        "description": "Clear/remove answer for a question",
+        "operationId": "clearAnswer",
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "questionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/suspicious": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get suspicious attempts",
+        "description": "Get all attempts with suspicious activity",
+        "operationId": "getSuspiciousAttempts",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageAttemptSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/student/{studentId}": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get student attempts",
+        "description": "Retrieves all attempts by a specific student (teacher/admin)",
+        "operationId": "getStudentAttemptsAdmin",
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "description": "Student ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageAttemptSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/search": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Search attempts",
+        "description": "Advanced search with filters",
+        "operationId": "searchAttempts",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "studentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "suspicious",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageAttemptSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/my-attempts": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get my attempts",
+        "description": "Retrieves all attempts by the current student",
+        "operationId": "getMyAttempts",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageAttemptSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/my-attempts/exam/{examId}": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get my attempts for exam",
+        "description": "Retrieves all attempts by current student for a specific exam",
+        "operationId": "getMyExamAttempts",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageAttemptSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/my-attempts/exam/{examId}/count": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "operationId": "getStudentExamAttemptsCount",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/my-attempts/count": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get my attempts count",
+        "description": "Returns total number of attempts by current student",
+        "operationId": "getMyAttemptsCount",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/health": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Health check",
+        "description": "Check if attempt service is running",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseString"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/exam/{examId}": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get exam attempts",
+        "description": "Retrieves all attempts for a specific exam (teacher/admin)",
+        "operationId": "getExamAttempts",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageAttemptSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/exam/{examId}/suspicious": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get suspicious attempts for exam",
+        "description": "Suspicious attempts for specific exam",
+        "operationId": "getSuspiciousExamAttempts",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListAttemptSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/exam/{examId}/remaining-attempts": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get remaining attempts",
+        "description": "Get number of remaining attempts allowed",
+        "operationId": "getRemainingAttempts",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseInteger"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/exam/{examId}/count": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get exam attempts count",
+        "description": "Returns total number of attempts for an exam",
+        "operationId": "getExamAttemptsCount",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "description": "Exam ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseLong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/exam/{examId}/completion-stats": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get completion statistics",
+        "description": "Stats on completed vs abandoned attempts",
+        "operationId": "getCompletionStats",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCompletionStatsDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/exam/{examId}/can-start": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Check if can start exam",
+        "description": "Validate if student can start new attempt",
+        "operationId": "canStartAttempt",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCanStartAttemptDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/exam/{examId}/average-time": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get average completion time",
+        "description": "Average time taken to complete exam",
+        "operationId": "getAverageCompletionTime",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDouble"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/exam/{examId}/analytics": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get exam attempt analytics",
+        "description": "Analytics across all attempts for exam",
+        "operationId": "getExamAttemptAnalytics",
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttemptAnalyticsDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/all": {
+      "get": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Get all attempts",
+        "description": "Retrieves all attempts in the system (admin only)",
+        "operationId": "getAllAttempts",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageAttemptSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attempts/bulk/delete": {
+      "delete": {
+        "tags": [
+          "Attempt Management"
+        ],
+        "summary": "Bulk delete attempts",
+        "description": "Delete multiple attempts",
+        "operationId": "bulkDelete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkOperationResultDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "SaveProgressRequest": {
+        "type": "object",
+        "properties": {
+          "currentQuestionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currentQuestionIndex": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ApiResponseAttemptResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttemptResponse"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "AttemptAnswerResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "answerText": {
+            "type": "string"
+          },
+          "selectedOptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "flagged": {
+            "type": "boolean"
+          },
+          "timeSpentSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "marksAllocated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AttemptResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examTitle": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "IN_PROGRESS",
+              "PAUSED",
+              "SUBMITTED",
+              "AUTO_SUBMITTED",
+              "ABANDONED",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "answeredQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "flaggedQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalMarks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "examDurationInMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeTakenSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tabSwitches": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "webcamViolations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "autoSubmitted": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptAnswerResponse"
+            }
+          }
+        }
+      },
+      "ProctoringHeartbeatRequest": {
+        "type": "object",
+        "properties": {
+          "currentQuestionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isWindowFocused": {
+            "type": "boolean"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "FlagSuspiciousRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "flaggedBy": {
+            "type": "string"
+          }
+        }
+      },
+      "SaveAnswerRequest": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "answerText": {
+            "type": "string"
+          },
+          "selectedOptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "flagged": {
+            "type": "boolean"
+          },
+          "timeSpentSeconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseAttemptAnswerResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttemptAnswerResponse"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseListAttemptAnswerResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptAnswerResponse"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "SubmitAttemptRequest": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "StartAttemptRequest": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ApiResponseBulkOperationResultDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/BulkOperationResultDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "BulkOperationResultDTO": {
+        "type": "object",
+        "properties": {
+          "totalRequested": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "successful": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "successfulIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "failedItems": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ApiResponseTimeBreakdownDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TimeBreakdownDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "QuestionTimeDTO": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeSpentSeconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TimeBreakdownDTO": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalTimeSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "questionTimeBreakdown": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionTimeDTO"
+            }
+          }
+        }
+      },
+      "ApiResponseAttemptStatusDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttemptStatusDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "AttemptStatusDTO": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "IN_PROGRESS",
+              "PAUSED",
+              "SUBMITTED",
+              "AUTO_SUBMITTED",
+              "ABANDONED",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "elapsedTimeSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "remainingTimeSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isExpired": {
+            "type": "boolean"
+          },
+          "canSubmit": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseAttemptProgressDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttemptProgressDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "AttemptProgressDTO": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "answeredQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unansweredQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "flaggedQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completionPercentage": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "ApiResponseListViolationDetailDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ViolationDetailDTO"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ViolationDetailDTO": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseListProctoringEventDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProctoringEventDTO"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ProctoringEventDTO": {
+        "type": "object",
+        "properties": {
+          "eventType": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+
+            }
+          }
+        }
+      },
+      "ApiResponseProctoringSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProctoringSummaryDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ProctoringSummaryDTO": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalTabSwitches": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalWebcamViolations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalViolations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isSuspicious": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseListUUID": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseCanSubmitDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CanSubmitDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "CanSubmitDTO": {
+        "type": "object",
+        "properties": {
+          "canSubmit": {
+            "type": "boolean"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ApiResponsePageAttemptSummary": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PageAttemptSummary"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "AttemptSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "examTitle": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "IN_PROGRESS",
+              "PAUSED",
+              "SUBMITTED",
+              "AUTO_SUBMITTED",
+              "ABANDONED",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "answeredQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeTakenSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "suspicious": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageAttemptSummary": {
+        "type": "object",
+        "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptSummary"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paged": {
+            "type": "boolean"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unpaged": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "empty": {
+            "type": "boolean"
+          },
+          "sorted": {
+            "type": "boolean"
+          },
+          "unsorted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseLong": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseString": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseListAttemptSummary": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttemptSummary"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseInteger": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseCompletionStatsDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CompletionStatsDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "CompletionStatsDTO": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalAttempts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "completedCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "autoSubmittedCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "abandonedCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "completionRate": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "ApiResponseCanStartAttemptDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CanStartAttemptDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "CanStartAttemptDTO": {
+        "type": "object",
+        "properties": {
+          "canStart": {
+            "type": "boolean"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ApiResponseDouble": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "number",
+            "format": "double"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseAttemptAnalyticsDTO": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttemptAnalyticsDTO"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      "AttemptAnalyticsDTO": {
+        "type": "object",
+        "properties": {
+          "examId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalAttempts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "completedAttempts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inProgressAttempts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "averageCompletionTime": {
+            "type": "number",
+            "format": "double"
+          },
+          "averageTabSwitches": {
+            "type": "number",
+            "format": "double"
+          },
+          "averageWebcamViolations": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Bearer Authentication": {
+        "type": "http",
+        "description": "Enter JWT token obtained from auth-server",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
